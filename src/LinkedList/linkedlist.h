@@ -6,14 +6,9 @@
 // Node structure for a singly linked list storing generic data
 typedef struct Node {
     void* data;
+    size_t data_size;  // store how many bytes 'data' has
     struct Node* next;
 } Node;
-
-/**
- * Function pointer type for printing node data.
- * The user-provided function should cast data to the correct type and print it.
- */
-typedef void (*PrintFunc)(const void* data);
 
 /**
  * Create a new node which stores a copy of the data.
@@ -40,18 +35,26 @@ void insertAtBeginning(Node** head, const void* data, size_t data_size);
 void insertAtEnd(Node** head, const void* data, size_t data_size);
 
 /**
+ * Remove the node at the beginning of the list and optionally copy out its data.
+ *  - head: Address of the pointer to the head node
+ *  - outData: Pointer to a buffer where data will be copied (can be NULL)
+ *    NOTE: The size of this buffer should be at least as large as data_size in the node.
+ * Returns: 1 if a node was removed, 0 if the list was empty
+ */
+int removeAtBeginning(Node** head, void* outData);
+
+/**
  * Print all elements in the linked list.
  *  - head: Pointer to the head of the list
  *  - printFunc: Function pointer for printing a single node's data
+ *               typedef:  void (*PrintFunc)(const void* data);
  */
+typedef void (*PrintFunc)(const void* data);
 void printList(const Node* head, PrintFunc printFunc);
 
 /**
  * Free all nodes in the linked list, including their data.
  *  - head: Address of the pointer to the head node
- *
- * Note: Since createNode() allocates memory for the data,
- *       freeList() will automatically free it as well.
  */
 void freeList(Node** head);
 

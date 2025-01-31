@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>     // for memcpy
-#include "linkedList.h" // include the header
+#include "linkedlist.h"
 
 Node* createNode(const void* data, size_t data_size) {
     Node* newNode = (Node*)malloc(sizeof(Node));
@@ -10,7 +10,7 @@ Node* createNode(const void* data, size_t data_size) {
         exit(EXIT_FAILURE);
     }
 
-    // Allocate memory for the data and copy it
+    // Allocate memory for data and copy it
     newNode->data = malloc(data_size);
     if (!newNode->data) {
         fprintf(stderr, "Memory allocation failed for node data.\n");
@@ -19,7 +19,9 @@ Node* createNode(const void* data, size_t data_size) {
     }
     memcpy(newNode->data, data, data_size);
 
+    newNode->data_size = data_size;
     newNode->next = NULL;
+
     return newNode;
 }
 
@@ -46,10 +48,30 @@ void insertAtEnd(Node** head, const void* data, size_t data_size) {
     temp->next = newNode;
 }
 
+int removeAtBeginning(Node** head, void* outData) {
+    if (*head == NULL) {
+        return 0; // List is empty, nothing to remove
+    }
+
+    Node* toRemove = *head;
+    // If outData is not NULL, copy the data out before freeing
+    if (outData) {
+        memcpy(outData, toRemove->data, toRemove->data_size);
+    }
+
+    // Advance the head pointer
+    *head = toRemove->next;
+
+    // Free node and its internal data
+    free(toRemove->data);
+    free(toRemove);
+
+    return 1; // Successfully removed
+}
+
 void printList(const Node* head, PrintFunc printFunc) {
     const Node* current = head;
     while (current != NULL) {
-        // Use the user-provided function to print each node's data
         printFunc(current->data);
         current = current->next;
     }
