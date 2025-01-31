@@ -8,6 +8,7 @@ all:
 	    Stack/stack.c Stack/test_stack.c \
 	    DoubleLinkedList/double_linkedlist.c DoubleLinkedList/test_double_linkedlist.c \
 	    Queue/queue.c Queue/test_queue.c \
+		Deque/deque.c Deque/test_deque.c \
 	    -o main
 
 clean:
