@@ -9,6 +9,7 @@ all:
 	    DoubleLinkedList/double_linkedlist.c DoubleLinkedList/test_double_linkedlist.c \
 	    Queue/queue.c Queue/test_queue.c \
 		Deque/deque.c Deque/test_deque.c \
+		CircularLinkedList/circular_list.c CircularLinkedList/test_circular_list.c \
 	    -o main
 
 clean:

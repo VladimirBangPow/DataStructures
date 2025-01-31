@@ -5,7 +5,6 @@
  * Runs the test suite for the queue.
  */
 
-void printInt(const void* data);
 void testDeque(void);
 
 #endif

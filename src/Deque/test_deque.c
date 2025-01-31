@@ -2,7 +2,7 @@
 #include "deque.h"
 
 // A sample print function for integers
-void printInt(const void* data) {
+static void printInt(const void* data) {
     printf("%d -> ", *(const int*)data);
 }
 
