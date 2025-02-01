@@ -1,8 +1,8 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "linkedlist.h"
-#include "test_linkedlist.h"
 
 /* ========================================================================= */
 /* Helpers                                                                   */
@@ -24,11 +24,19 @@ static int nodeDataAsInt(const Node* node) {
     return *(int*)(node->data);
 }
 
+
+// A helper print function for integers
+static void printInt(const void* data) {
+    printf("%d -> ", *(const int*)data);
+}
+
 /* ========================================================================= */
-/* Individual Tests (static)                                                */
+/* Individual Tests                                                          */
 /* ========================================================================= */
 
-static void test_createNode_impl(void) {
+static void test_createNode(void) {
+    printf("Running %s...\n", __func__);
+
     int value = 42;
     Node* n = createNode(&value, sizeof(int));
     assert(n != NULL);
@@ -40,21 +48,30 @@ static void test_createNode_impl(void) {
     // Clean up
     free(n->data);
     free(n);
+
+    printf("%s PASSED.\n", __func__);
 }
 
-static void test_insertAtBeginning_impl(void) {
+static void test_insertAtBeginning(void) {
+    printf("Running %s...\n", __func__);
+
     Node* head = NULL;
 
     int val1 = 10;
     insertAtBeginning(&head, &val1, sizeof(int));
-    // List: [10]
+    // List should be: [10]
     assert(head != NULL);
     assert(nodeDataAsInt(head) == 10);
     assert(head->next == NULL);
 
     int val2 = 20;
     insertAtBeginning(&head, &val2, sizeof(int));
-    // List: [20 -> 10]
+    // List should be: [20 -> 10]
+	/*
+		PRINT LIST DEMO IS HERE ALONG WITH PRINT INT
+	*/
+	printList(head, printInt);
+
     assert(head != NULL);
     assert(nodeDataAsInt(head) == 20);
     assert(head->next != NULL);
@@ -62,21 +79,25 @@ static void test_insertAtBeginning_impl(void) {
 
     freeList(&head);
     assert(head == NULL);
+
+    printf("%s PASSED.\n", __func__);
 }
 
-static void test_insertAtEnd_impl(void) {
+static void test_insertAtEnd(void) {
+    printf("Running %s...\n", __func__);
+
     Node* head = NULL;
 
     int val1 = 10;
     insertAtEnd(&head, &val1, sizeof(int));
-    // List: [10]
+    // List should be: [10]
     assert(head != NULL);
     assert(nodeDataAsInt(head) == 10);
     assert(head->next == NULL);
 
     int val2 = 20;
     insertAtEnd(&head, &val2, sizeof(int));
-    // List: [10 -> 20]
+    // List should be: [10 -> 20]
     assert(head != NULL);
     assert(nodeDataAsInt(head) == 10);
     assert(head->next != NULL);
@@ -85,9 +106,13 @@ static void test_insertAtEnd_impl(void) {
 
     freeList(&head);
     assert(head == NULL);
+
+    printf("%s PASSED.\n", __func__);
 }
 
-static void test_removeAtBeginning_impl(void) {
+static void test_removeAtBeginning(void) {
+    printf("Running %s...\n", __func__);
+
     Node* head = NULL;
     int val1 = 10, val2 = 20;
     insertAtBeginning(&head, &val1, sizeof(int)); // List: [10]
@@ -98,7 +123,7 @@ static void test_removeAtBeginning_impl(void) {
     int res = removeAtBeginning(&head, &removedValue);
     assert(res == 1);
     assert(removedValue == 20);
-    // List is now [10]
+    // List should now be [10]
     assert(head != NULL);
     assert(nodeDataAsInt(head) == 10);
 
@@ -106,20 +131,26 @@ static void test_removeAtBeginning_impl(void) {
     res = removeAtBeginning(&head, &removedValue);
     assert(res == 1);
     assert(removedValue == 10);
-    // List is now empty
+    // List should now be []
     assert(head == NULL);
 
     // Attempt to remove from empty list
     res = removeAtBeginning(&head, &removedValue);
     assert(res == 0);
 
-    freeList(&head);
+    freeList(&head); // safe to call on empty
     assert(head == NULL);
+
+    printf("%s PASSED.\n", __func__);
 }
 
-static void test_insertAtPosition_impl(void) {
+static void test_insertAtPosition(void) {
+    printf("Running %s...\n", __func__);
+
     Node* head = NULL;
     int res;
+
+    // Start with an empty list
 
     // Insert at pos 0 => same as insertAtBeginning
     int val1 = 10;
@@ -128,7 +159,7 @@ static void test_insertAtPosition_impl(void) {
     assert(head != NULL);
     assert(nodeDataAsInt(head) == 10);
 
-    // Insert 20 at pos 0 => [20 -> 10]
+    // Insert 20 at pos 0 => now [20 -> 10]
     int val2 = 20;
     res = insertAtPosition(&head, &val2, sizeof(int), 0);
     assert(res == 1);
@@ -147,6 +178,7 @@ static void test_insertAtPosition_impl(void) {
     int val4 = 40;
     res = insertAtPosition(&head, &val4, sizeof(int), 3);
     assert(res == 1);
+    // Verify final arrangement
     Node* tmp = head;
     assert(nodeDataAsInt(tmp) == 20); tmp = tmp->next;
     assert(nodeDataAsInt(tmp) == 30); tmp = tmp->next;
@@ -157,56 +189,68 @@ static void test_insertAtPosition_impl(void) {
     // Try invalid position
     int val5 = 50;
     res = insertAtPosition(&head, &val5, sizeof(int), 10); 
-    assert(res == 0);
+    assert(res == 0); // Should fail
 
+    // Clean up
     freeList(&head);
     assert(head == NULL);
+
+    printf("%s PASSED.\n", __func__);
 }
 
-static void test_removeAtPosition_impl(void) {
+static void test_removeAtPosition(void) {
+    printf("Running %s...\n", __func__);
+
     Node* head = NULL;
     int removedValue;
     int res;
 
-    // Create: [10 -> 20 -> 30 -> 40]
+    // Create a small list: [10 -> 20 -> 30 -> 40]
     int vals[] = {10, 20, 30, 40};
     for (int i = 0; i < 4; i++) {
         insertAtEnd(&head, &vals[i], sizeof(int));
     }
 
-    // Remove at pos 0 => remove 10 => [20 -> 30 -> 40]
+    // Remove at position 0 => remove 10
     res = removeAtPosition(&head, 0, &removedValue);
     assert(res == 1);
     assert(removedValue == 10);
+    // List is now [20 -> 30 -> 40]
 
-    // Remove at pos 1 => remove 30 => [20 -> 40]
+    // Remove at position 1 => remove 30
     res = removeAtPosition(&head, 1, &removedValue);
     assert(res == 1);
     assert(removedValue == 30);
+    // List is now [20 -> 40]
 
-    // Remove at pos 1 => remove 40 => [20]
+    // Remove at last position => position 1 => remove 40
     res = removeAtPosition(&head, 1, &removedValue);
     assert(res == 1);
     assert(removedValue == 40);
+    // List is now [20]
 
-    // Invalid remove => pos 5
+    // Remove at invalid position => position 5
     res = removeAtPosition(&head, 5, &removedValue);
     assert(res == 0);
-    // List is [20]
+    // List remains [20]
 
-    // Remove last item => pos 0 => remove 20 => []
+    // Remove at position 0 => remove 20
     res = removeAtPosition(&head, 0, &removedValue);
     assert(res == 1);
     assert(removedValue == 20);
+    // List is now empty
 
-    freeList(&head);
+    freeList(&head); // no effect on empty
     assert(head == NULL);
+
+    printf("%s PASSED.\n", __func__);
 }
 
-static void test_search_impl(void) {
-    Node* head = NULL;
+static void test_search(void) {
+    printf("Running %s...\n", __func__);
 
-    // Create: [10 -> 20 -> 30]
+    Node* head = NULL;
+    // Populate: [10 -> 20 -> 30]
     int vals[] = {10, 20, 30};
     for (int i = 0; i < 3; i++) {
         insertAtEnd(&head, &vals[i], sizeof(int));
@@ -216,54 +260,66 @@ static void test_search_impl(void) {
     int key = 20;
     Node* found = search(head, &key, intCompare);
     assert(found != NULL);
-    assert(nodeDataAsInt(found) == 20);
+    assert(*(int*)found->data == 20);
 
-    // Search for non-existing 999
+    // Search for non-existing
     key = 999;
     found = search(head, &key, intCompare);
     assert(found == NULL);
 
+    // Cleanup
     freeList(&head);
     assert(head == NULL);
+
+    printf("%s PASSED.\n", __func__);
 }
 
-static void test_sortList_impl(void) {
+static void test_sortList(void) {
+    printf("Running %s...\n", __func__);
+
     Node* head = NULL;
-    // Insert random order: [50 -> 10 -> 40 -> 30 -> 20]
+    // Let's insert some values in random order
     int vals[] = {50, 10, 40, 30, 20};
     for (int i = 0; i < 5; i++) {
         insertAtEnd(&head, &vals[i], sizeof(int));
     }
-
+    // Now the list is [50 -> 10 -> 40 -> 30 -> 20]
     sortList(&head, intCompare);
-    // Should now be [10 -> 20 -> 30 -> 40 -> 50]
+    // The list should be [10 -> 20 -> 30 -> 40 -> 50]
     Node* temp = head;
     for (int i = 1; i <= 5; i++) {
-        assert(nodeDataAsInt(temp) == i * 10);
+        assert(nodeDataAsInt(temp) == i*10);
         temp = temp->next;
     }
     assert(temp == NULL);
 
-    // Single-element list
+    // Test single-element list
     Node* single = NULL;
     int singleVal = 100;
     insertAtEnd(&single, &singleVal, sizeof(int));
     sortList(&single, intCompare);
+    assert(single != NULL);
     assert(nodeDataAsInt(single) == 100);
     assert(single->next == NULL);
     freeList(&single);
+    assert(single == NULL);
 
-    // Empty list
+    // Test empty list
     Node* empty = NULL;
     sortList(&empty, intCompare);
     assert(empty == NULL);
 
+    // Cleanup main list
     freeList(&head);
     assert(head == NULL);
+
+    printf("%s PASSED.\n", __func__);
 }
 
-static void test_freeList_impl(void) {
-    // Build [123 -> 456], then free
+static void test_freeList(void) {
+    printf("Running %s...\n", __func__);
+
+    // Create a list, then free it
     Node* head = NULL;
     int val1 = 123, val2 = 456;
     insertAtEnd(&head, &val1, sizeof(int));
@@ -272,53 +328,30 @@ static void test_freeList_impl(void) {
     freeList(&head);
     assert(head == NULL);
 
-    // Safe to call again
+    // Safe to call freeList again
     freeList(&head);
     assert(head == NULL);
+
+    printf("%s PASSED.\n", __func__);
 }
 
 /* ========================================================================= */
-/* Test Runner Implementation (Renamed from 'main' to 'testLinkedList')      */
+/* Main Test Runner                                                          */
 /* ========================================================================= */
 
-void testLinkedList(void) {
+int testLinkedList(void) {
     printf("=== BEGIN LINKED LIST TESTS (ASSERTION-BASED) ===\n\n");
 
-    printf("Running test_createNode_impl...\n");
-    test_createNode_impl();
-    printf("-> PASSED.\n\n");
+    test_createNode();
+    test_insertAtBeginning();
+    test_insertAtEnd();
+    test_removeAtBeginning();
+    test_insertAtPosition();
+    test_removeAtPosition();
+    test_search();
+    test_sortList();
+    test_freeList();
 
-    printf("Running test_insertAtBeginning_impl...\n");
-    test_insertAtBeginning_impl();
-    printf("-> PASSED.\n\n");
-
-    printf("Running test_insertAtEnd_impl...\n");
-    test_insertAtEnd_impl();
-    printf("-> PASSED.\n\n");
-
-    printf("Running test_removeAtBeginning_impl...\n");
-    test_removeAtBeginning_impl();
-    printf("-> PASSED.\n\n");
-
-    printf("Running test_insertAtPosition_impl...\n");
-    test_insertAtPosition_impl();
-    printf("-> PASSED.\n\n");
-
-    printf("Running test_removeAtPosition_impl...\n");
-    test_removeAtPosition_impl();
-    printf("-> PASSED.\n\n");
-
-    printf("Running test_search_impl...\n");
-    test_search_impl();
-    printf("-> PASSED.\n\n");
-
-    printf("Running test_sortList_impl...\n");
-    test_sortList_impl();
-    printf("-> PASSED.\n\n");
-
-    printf("Running test_freeList_impl...\n");
-    test_freeList_impl();
-    printf("-> PASSED.\n\n");
-
-    printf("=== ALL TESTS PASSED SUCCESSFULLY ===\n");
+    printf("\n=== ALL TESTS PASSED SUCCESSFULLY ===\n");
+    return 0;
 }
