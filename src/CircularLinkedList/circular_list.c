@@ -1,138 +1,83 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include "circular_list.h"
 
-static CNode* createCNode(const void* data, size_t data_size) {
-    CNode* node = (CNode*)malloc(sizeof(CNode));
-    if (!node) {
-        fprintf(stderr, "Memory allocation failed (CNode).\n");
-        exit(EXIT_FAILURE);
+/*
+ * A small helper that "repairs" next/prev pointers
+ * so the list is truly circular:
+ *
+ *  head->prev = tail
+ *  tail->next = head
+ *
+ *  ... but only if the list is not empty.
+ */
+static void enforceCircular(CircularList* list) {
+	if (!list->head) return; // empty => no fix
+    if (list->head == list->tail) {
+        // Single node
+        list->head->prev = list->head;
+        list->head->next = list->head;
+    } else {
+        // 2+ nodes
+        list->head->prev = list->tail;
+        list->tail->next = list->head;
     }
-    node->data = malloc(data_size);
-    if (!node->data) {
-        fprintf(stderr, "Memory allocation failed (node->data).\n");
-        free(node);
-        exit(EXIT_FAILURE);
-    }
-    memcpy(node->data, data, data_size);
-
-    node->data_size = data_size;
-    node->next = NULL;
-    return node;
 }
 
 void clistInit(CircularList* list) {
-    list->tail = NULL;
+    dllInit(list);  // Initialize via the original DLL function
 }
 
-// Insert at front, i.e. after tail->next or creating the first node
+/* Insert front, then enforce circularity */
 void clistInsertFront(CircularList* list, const void* data, size_t data_size) {
-    CNode* newNode = createCNode(data, data_size);
-
-    if (list->tail == NULL) {
-        // Empty list: newNode points to itself
-        list->tail = newNode;
-        newNode->next = newNode;
-    } else {
-        // Insert at head, which is tail->next
-        CNode* head = list->tail->next;
-        newNode->next = head;
-        list->tail->next = newNode;
-    }
+    dllInsertFront(list, data, data_size); 
+    enforceCircular(list);
 }
 
-// Insert at back, i.e. effectively new tail
+/* Insert back, then enforce circularity */
 void clistInsertBack(CircularList* list, const void* data, size_t data_size) {
-    CNode* newNode = createCNode(data, data_size);
-
-    if (list->tail == NULL) {
-        // Empty list
-        list->tail = newNode;
-        newNode->next = newNode;
-    } else {
-        // Insert after tail, new tail is newNode
-        newNode->next = list->tail->next; // preserve the old head
-        list->tail->next = newNode;
-        list->tail = newNode;
-    }
+    dllInsertBack(list, data, data_size);
+    enforceCircular(list);
 }
 
-// Remove the front node (tail->next)
+/* Remove front, then enforce circularity */
 int clistRemoveFront(CircularList* list, void* outData) {
-    if (list->tail == NULL) {
-        return 0; // Empty
+    int result = dllRemoveFront(list, outData);
+    // If successful, patch circular links
+    if (result) {
+        enforceCircular(list);
     }
-    CNode* head = list->tail->next; // front node
-    if (head == list->tail) {
-        // Only one node in the list
-        if (outData) {
-            memcpy(outData, head->data, head->data_size);
-        }
-        free(head->data);
-        free(head);
-        list->tail = NULL;
-        return 1;
-    }
-    // More than one node
-    if (outData) {
-        memcpy(outData, head->data, head->data_size);
-    }
-    list->tail->next = head->next; // skip the old head
-    free(head->data);
-    free(head);
-    return 1;
+    return result;
 }
 
-// Remove the back node (tail)
+/* Remove back, then enforce circularity */
 int clistRemoveBack(CircularList* list, void* outData) {
-    if (list->tail == NULL) {
-        return 0; // Empty
+    int result = dllRemoveBack(list, outData);
+    if (result) {
+        enforceCircular(list);
     }
-    // If there's only one node
-    if (list->tail->next == list->tail) {
-        if (outData) {
-            memcpy(outData, list->tail->data, list->tail->data_size);
-        }
-        free(list->tail->data);
-        free(list->tail);
-        list->tail = NULL;
-        return 1;
-    }
-    // More than one node: find the node before tail
-    CNode* cur = list->tail->next;  // Start at head
-    while (cur->next != list->tail) {
-        cur = cur->next;
-    }
-    // 'cur' is now the node before tail
-    if (outData) {
-        memcpy(outData, list->tail->data, list->tail->data_size);
-    }
-    cur->next = list->tail->next; // skip the old tail
-    free(list->tail->data);
-    free(list->tail);
-    list->tail = cur; // new tail
-    return 1;
+    return result;
 }
 
-void clistPrint(const CircularList* list, CPrintFunc printFunc) {
-    if (list->tail == NULL) {
-        // Empty
+/* Print in a circular manner, but stop once we get back to head */
+void clistPrint(const CircularList* list, void (*printFunc)(const void*)) {
+    if (!list->head) {
         printf("NULL\n");
         return;
     }
-    CNode* head = list->tail->next;
-    CNode* temp = head;
+
+    /* We'll do a do-while loop from head to tail->next == head */
+    DNode* current = list->head;
     do {
-        printFunc(temp->data);
-        temp = temp->next;
-    } while (temp != head);
-    printf("NULL\n");
+        printFunc(current->data);
+        current = current->next;
+    } while (current && current != list->head);
+
+    printf(" (circular back to head)\n");
 }
 
+/* Free everything. You can just call dllFree, which removes all nodes.
+   The 'circular' aspect doesn't matter if we're destroying the entire list. */
 void clistFree(CircularList* list) {
-    // Keep removing front until empty
-    while (clistRemoveFront(list, NULL)) {
-        // no-op
-    }
+    dllFree(list);
 }

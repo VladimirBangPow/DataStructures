@@ -1,10 +1,11 @@
 #ifndef TEST_CIRCULAR_LIST_H
 #define TEST_CIRCULAR_LIST_H
 
-/**
- * Runs the test suite for the queue.
+/* 
+ * This header declares a single function that runs
+ * all the circular-list tests. There's no `main()` here.
  */
-
 void testCircularList(void);
 
 #endif
+

@@ -1,64 +1,37 @@
 #ifndef DEQUE_H
 #define DEQUE_H
 
-#include <stddef.h>  // for size_t
+#include <stddef.h>     // for size_t
+#include <stdbool.h>    // for bool
+#include "../DoubleLinkedList/double_linkedlist.h"
 
-// A doubly linked list node
-typedef struct DequeNode {
-    void* data;
-    size_t data_size;
-    struct DequeNode* prev;
-    struct DequeNode* next;
-} DequeNode;
+// For simplicity, we can typedef Deque as a DoubleLinkedList
+typedef DoubleLinkedList Deque;
 
-// The Deque structure
-typedef struct {
-    DequeNode* front;
-    DequeNode* back;
-} Deque;
-
-
-void dequePrint(const Deque* dq, void (*printFunc)(const void*));
-
-
-/**
- * Initialize an empty deque.
- */
+// Initialize the deque
 void dequeInit(Deque* dq);
 
-/**
- * Insert data at the front of the deque.
- */
+// Destroy the deque completely
+void dequeDestroy(Deque* dq);
+
+// Check if the deque is empty
+bool dequeIsEmpty(const Deque* dq);
+
+// Push an element to the front
 void dequePushFront(Deque* dq, const void* data, size_t data_size);
 
-/**
- * Insert data at the back of the deque.
- */
+// Push an element to the back
 void dequePushBack(Deque* dq, const void* data, size_t data_size);
 
-/**
- * Remove an element from the front of the deque.
- * - If `outData` is non-null, copies the removed data into `outData`.
- * - Returns 1 if successful, 0 if deque is empty.
- */
-int dequePopFront(Deque* dq, void* outData);
+// Pop an element from the front
+// Returns true if an element was removed, false if empty
+bool dequePopFront(Deque* dq, void* outData);
 
-/**
- * Remove an element from the back of the deque.
- * - If `outData` is non-null, copies the removed data into `outData`.
- * - Returns 1 if successful, 0 if deque is empty.
- */
-int dequePopBack(Deque* dq, void* outData);
+// Pop an element from the back
+// Returns true if an element was removed, false if empty
+bool dequePopBack(Deque* dq, void* outData);
 
-/**
- * Check if the deque is empty.
- * - Returns 1 if empty, 0 otherwise.
- */
-int dequeIsEmpty(const Deque* dq);
-
-/**
- * Clear all elements from the deque, freeing memory.
- */
-void dequeClear(Deque* dq);
+// Utility function to print the content of deque (given a user-defined print function)
+void dequePrint(const Deque* dq, void (*printFunc)(const void*));
 
 #endif // DEQUE_H

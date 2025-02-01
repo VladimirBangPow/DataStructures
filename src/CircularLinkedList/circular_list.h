@@ -1,59 +1,34 @@
 #ifndef CIRCULAR_LIST_H
 #define CIRCULAR_LIST_H
 
-#include <stddef.h> // for size_t
+#include "../DoubleLinkedList/double_linkedlist.h"
 
-// A singly circular linked list node
-typedef struct CNode {
-    void* data;
-    size_t data_size;
-    struct CNode* next;
-} CNode;
-
-typedef struct {
-    CNode* tail; // We'll keep a tail pointer, so tail->next = head
-} CircularList;
-
-/**
- * Initialize an empty circular list.
+/*
+ * We'll simply alias DoubleLinkedList to "CircularList."
+ * Internally, it's still the same struct with head/tail pointers;
+ * we just promise to maintain circular links using wrapper functions.
  */
+typedef DoubleLinkedList CircularList;
+
+/* Initialize */
 void clistInit(CircularList* list);
 
-/**
- * Insert a new node at the front (head) of the list.
- * (O(1) if we keep a tail pointer)
- */
+/* Insert at front (maintaining circularity) */
 void clistInsertFront(CircularList* list, const void* data, size_t data_size);
 
-/**
- * Insert a new node at the back (tail) of the list.
- */
+/* Insert at back (maintaining circularity) */
 void clistInsertBack(CircularList* list, const void* data, size_t data_size);
 
-/**
- * Remove the front node from the list.
- *  - If outData is non-null, copies the removed node's data to outData.
- *  - Returns 1 if successful, 0 if empty list.
- */
+/* Remove at front (maintaining circularity) */
 int clistRemoveFront(CircularList* list, void* outData);
 
-/**
- * Remove the back node from the list.
- *  - If outData is non-null, copies the removed node's data to outData.
- *  - Returns 1 if successful, 0 if empty list.
- */
+/* Remove at back (maintaining circularity) */
 int clistRemoveBack(CircularList* list, void* outData);
 
-/**
- * Print all elements in the circular list once.
- *  - printFunc is a function pointer to print a single node's data.
- */
-typedef void (*CPrintFunc)(const void*);
-void clistPrint(const CircularList* list, CPrintFunc printFunc);
+/* Print in a circular manner (we'll do a do-while loop) */
+void clistPrint(const CircularList* list, void (*printFunc)(const void*));
 
-/**
- * Free all nodes in the circular list.
- */
+/* Free all nodes */
 void clistFree(CircularList* list);
 
-#endif // CIRCULAR_LIST_H
+#endif

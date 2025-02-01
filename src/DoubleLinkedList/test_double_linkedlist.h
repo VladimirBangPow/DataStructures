@@ -1,9 +1,10 @@
-#ifndef TEST_DOUBLE_LINKEDLIST_H
-#define TEST_DOUBLE_LINKEDLIST_H
+#ifndef TEST_H
+#define TEST_H
 
-/**
- * Runs the test suite for the doubly linked list.
- */
+/* Declare all test functions here */
+void testIntegerOperations(void);
+void testStringOperations(void);
+void testPersonOperations(void);
+void testMixedOperations(void);
 void testDoubleLinkedList(void);
-
-#endif // TEST_DOUBLE_LINKEDLIST_H
+#endif

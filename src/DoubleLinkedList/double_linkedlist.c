@@ -72,35 +72,51 @@ void dllInsertBack(DoubleLinkedList* list, const void* data, size_t data_size) {
 }
 
 int dllRemoveFront(DoubleLinkedList* list, void* outData) {
-    if (!list->head) return 0; // Empty list
+if (!list->head) {
+        // Empty list
+        return 0;
+    }
 
     DNode* temp = list->head;
+
+    // Copy data if requested
     if (outData) {
         memcpy(outData, temp->data, temp->data_size);
     }
-    list->head = temp->next;
-    if (list->head) {
-        list->head->prev = NULL;
-    } else {
+
+    if (list->head == list->tail) {
+        // Single node case
+        list->head = NULL;
         list->tail = NULL;
+    } else {
+        // Multiple nodes
+        list->head = temp->next;
+        list->head->prev = NULL;
     }
+
     free(temp->data);
     free(temp);
+
     return 1;
 }
 
 int dllRemoveBack(DoubleLinkedList* list, void* outData) {
-    if (!list->tail) return 0; // Empty list
+
+	if (!list->tail) return 0; // empty
 
     DNode* temp = list->tail;
     if (outData) {
         memcpy(outData, temp->data, temp->data_size);
     }
-    list->tail = temp->prev;
-    if (list->tail) {
-        list->tail->next = NULL;
-    } else {
+
+    if (list->head == list->tail) {
+        // Only one node
         list->head = NULL;
+        list->tail = NULL;
+    } else {
+        // More than one
+        list->tail = temp->prev;
+        list->tail->next = NULL;
     }
     free(temp->data);
     free(temp);
