@@ -32,12 +32,7 @@ Typically O(n) because you usually have to traverse the list from the beginning 
 ## Doubly Linked List: 
 Like a linked list except that each node has pointers to both next and previous nodes.
 
-NULL<--prev--|----|<--prev--|----|
- 			 |data|         |data|
-	         |----|--next-->|----|--next-->NULL
-			   ^
-			   |
-			 head
+![Double Linked List](diagrams/doubleLinkedList.png "Double Linked List")
 
 ## Circular Linked List: 
 last node links back to the first (can be singly or doubly circular).
