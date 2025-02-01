@@ -43,7 +43,7 @@ Follows LIFO (Last-In, First-Out) semantics.
 Operations: push, pop, peek.
 Implemented via arrays or linked lists.
 
-![Double Linked Circular List](diagrams/circularDoubleLinkedList.png "Circular Double Linked List")
+![Stack](diagrams/Stack.png "Stack")
 
 
 ## Queue
