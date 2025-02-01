@@ -30,7 +30,15 @@ Typically O(n) because you usually have to traverse the list from the beginning 
 
 
 ## Doubly Linked List: 
-each node has pointers to both next and previous nodes.
+Like a linked list except that each node has pointers to both next and previous nodes.
+
+NULL<--prev--|----|<--prev--|----|
+ 			 |data|         |data|
+	         |----|--next-->|----|--next-->NULL
+			   ^
+			   |
+			 head
+
 ## Circular Linked List: 
 last node links back to the first (can be singly or doubly circular).
 
