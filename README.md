@@ -10,8 +10,23 @@ It’s impossible to name all data structures (there are infinitely many variant
 A contiguous block of memory storing elements of the same type. Access by index in O(1).
 Variants: Dynamic arrays (like C++ std::vector), Static arrays (fixed size).
 ## Linked List
+### Description
+A linked list is a fundamental data structure where each element (node) holds some data and a reference (pointer) to one or more other nodes. Unlike arrays (which store elements contiguously in memory), a linked list’s elements can be scattered throughout memory, with each node “linking” to the next node in the sequence. This structure enables flexible insertion and deletion operations without shifting large blocks of memory.
 
-A sequence of nodes where each node holds data and a pointer/reference to the next (and optionally previous) node.
+In the simplest form—a singly linked list—each node has:
+
+Data: The value or payload the node holds (e.g., an integer, string, or any other structure).
+Pointer to the next node: A reference (or pointer) to the next node in the sequence.
+A standard singly linked list has:
+
+A special pointer called the head that points to the first node.
+The last node’s pointer to “next” is typically NULL, indicating the end of the list.
+
+head -> [ data | next ] -> [ data | next ] -> ... -> NULL
+
+### Complexity:
+
+Typically O(n) because you usually have to traverse the list from the beginning until you find the target or reach the end.
 
 ## Singly Linked List: 
 each node has a pointer to the next node only.
