@@ -28,8 +28,7 @@ head -> [ data | next ] -> [ data | next ] -> ... -> NULL
 
 Typically O(n) because you usually have to traverse the list from the beginning until you find the target or reach the end.
 
-## Singly Linked List: 
-each node has a pointer to the next node only.
+
 ## Doubly Linked List: 
 each node has pointers to both next and previous nodes.
 ## Circular Linked List: 
