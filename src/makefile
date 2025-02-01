@@ -10,7 +10,8 @@ all:
 	    Queue/queue.c Queue/test_queue.c \
 		Deque/deque.c Deque/test_deque.c \
 		CircularLinkedList/circular_list.c CircularLinkedList/test_circular_list.c \
-	    -o main
+		DynamicArray/dynamic_array.c DynamicArray/test_dynamic_array.c \
+		-o main
 
 clean:
 	rm -f main

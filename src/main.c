@@ -4,13 +4,12 @@
 #include "Queue/test_queue.h"
 #include "Deque/test_deque.h"
 #include "CircularLinkedList/test_circular_list.h"
+#include "DynamicArray/test_dynamic_array.h"
 
 int main(void) {
-    // Old tests
     testLinkedList();
     testStack();
 
-    // New tests
     testDoubleLinkedList();
     testQueue();
 
@@ -18,5 +17,6 @@ int main(void) {
 
     testCircularList();
 
+	testDynamicArray();
     return 0;
 }
