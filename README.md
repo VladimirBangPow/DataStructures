@@ -52,6 +52,8 @@ Follows FIFO (First-In, First-Out) semantics.
 Operations: enqueue, dequeue.
 Often implemented with arrays or linked lists.
 
+![Queue](diagrams/Queue.png "Queue")
+
 ## Deque (Double-Ended Queue)
 
 Allows insertion and removal at both ends.
