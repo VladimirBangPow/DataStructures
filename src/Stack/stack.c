@@ -58,10 +58,10 @@ static int stackSize(const Stack* stack) {
  *        - Pass 2: Print them with ASCII-art borders, clamped by maxWidth if > 0.
  */
 void printStackRange(const Stack* stack,
-                     int startIndex,
-                     int endIndex,
-                     int maxWidth,
-                     StackFormatFunc formatter)
+                            int startIndex,
+                            int endIndex,
+                            int maxWidth,
+                            StackFormatFunc formatter)
 {
     if (!stack || !stack->top) {
         printf("(Stack is empty)\n");
@@ -71,112 +71,110 @@ void printStackRange(const Stack* stack,
         printf("(No formatter function provided)\n");
         return;
     }
-    if (startIndex < 0) startIndex = 0;
+    // Clamp startIndex >= 0
+    if (startIndex < 0) {
+        startIndex = 0;
+    }
 
+    // Find total size
     int size = stackSize(stack);
+    // Adjust endIndex if out of range
     if (endIndex >= size) {
         endIndex = size - 1;
     }
+    // Check if valid range
     if (endIndex < 0 || startIndex > endIndex) {
         printf("(Invalid range or nothing to print)\n");
         return;
     }
 
-    int rangeCount = endIndex - startIndex + 1;
-    // We'll store each formatted item in a temporary array of char*
-    char** items = (char**)malloc(rangeCount * sizeof(char*));
-    if (!items) {
-        printf("(Memory allocation failed)\n");
-        return;
-    }
+    // -----------------------------------------------------
+    // 1) FIRST PASS: find the maxLen
+    // -----------------------------------------------------
+    size_t maxLen = 0;
+    {
+        Node* cur = stack->top;
+        int index = 0;
+        const size_t LOCAL_BUF_SIZE = 512;
+        char buffer[LOCAL_BUF_SIZE];
 
-    const size_t ITEM_BUFFER_SIZE = 512;
-    size_t maxLen = 0;  // track longest string
+        while (cur && index <= endIndex) {
+            if (index >= startIndex) {
+                // Format the current node's data
+                memset(buffer, 0, LOCAL_BUF_SIZE);
+                formatter(cur->data, buffer, LOCAL_BUF_SIZE);
 
-    // -- PASS 1: Gather formatted strings & measure --
-    Node* cur = stack->top;
-    int index = 0;
-    int arrayPos = 0;
-
-    while (cur && index <= endIndex) {
-        if (index >= startIndex && index <= endIndex) {
-            items[arrayPos] = (char*)malloc(ITEM_BUFFER_SIZE);
-            if (!items[arrayPos]) {
-                printf("(Allocation failed for item)\n");
-                // free partial
-                for (int j = 0; j < arrayPos; j++) {
-                    free(items[j]);
+                size_t length = strlen(buffer);
+                if (length > maxLen) {
+                    maxLen = length;
                 }
-                free(items);
-                return;
             }
-            memset(items[arrayPos], 0, ITEM_BUFFER_SIZE);
-
-            // Format the data
-            formatter(cur->data, items[arrayPos], ITEM_BUFFER_SIZE);
-
-            size_t length = strlen(items[arrayPos]);
-            if (length > maxLen) {
-                maxLen = length;
-            }
-            arrayPos++;
+            cur = cur->next;
+            index++;
         }
-        cur = cur->next;
-        index++;
     }
 
-    // If user set a clamp width
+    // Clamp width if maxWidth > 0
     if (maxWidth > 0 && (int)maxLen > maxWidth) {
         maxLen = maxWidth;
     }
+    // Ensure at least width=1
     if (maxLen == 0) {
-        maxLen = 1; // avoid zero width
+        maxLen = 1;
     }
 
-    // -- PASS 2: Print each item aligned to maxLen --
-    for (int i = 0; i < rangeCount; i++) {
-        char* text = items[i];
-        size_t textLen = strlen(text);
+    // -----------------------------------------------------
+    // 2) SECOND PASS: print each item with known maxLen
+    // -----------------------------------------------------
+    {
+        Node* cur = stack->top;
+        int index = 0;
+        const size_t LOCAL_BUF_SIZE = 512;
+        char buffer[LOCAL_BUF_SIZE];
 
-        // If too long, embed ellipsis so total length doesn't exceed maxLen
-        if (textLen > maxLen) {
-            text[maxLen - 3] = '\0'; // cut at maxLen-3
-            strcat(text, "...");     // now exactly maxLen chars
-            textLen = maxLen;
-        }
+        while (cur && index <= endIndex) {
+            if (index >= startIndex) {
+                // Format again
+                memset(buffer, 0, LOCAL_BUF_SIZE);
+                formatter(cur->data, buffer, LOCAL_BUF_SIZE);
 
-        // Print top border
-        printf("|");
-        for (size_t w = 0; w < maxLen; w++) {
-            printf("=");
-        }
-        printf("|\n");
+                // Possibly embed ellipses if longer than maxLen
+                size_t length = strlen(buffer);
+                if (length > maxLen) {
+                    buffer[maxLen - 3] = '\0'; // cut at maxLen-3
+                    strcat(buffer, "...");
+                    length = maxLen;
+                }
 
-        // Print content
-        printf("|%s", text);
+                // Print top border
+                printf("|");
+                for (size_t w = 0; w < maxLen; w++) {
+                    printf("=");
+                }
+                printf("|\n");
 
-        // If still shorter, pad with spaces
-        textLen = strlen(text);
-        if (textLen < maxLen) {
-            for (size_t pad = textLen; pad < maxLen; pad++) {
-                printf(" ");
+                // Print content
+                printf("|%s", buffer);
+                // Pad if shorter
+                if (length < maxLen) {
+                    for (size_t pad = length; pad < maxLen; pad++) {
+                        printf(" ");
+                    }
+                }
+                printf("|\n");
+
+                // Bottom border
+                printf("|");
+                for (size_t w = 0; w < maxLen; w++) {
+                    printf("=");
+                }
+                printf("|\n");
             }
+            cur = cur->next;
+            index++;
         }
-        printf("|\n");
-
-        // Bottom border
-        printf("|");
-        for (size_t w = 0; w < maxLen; w++) {
-            printf("=");
-        }
-        printf("|\n");
-
-        free(text); // typical cleanup
     }
-
-    free(items); // free the array of char* pointers
 }
-
 /**
  * @brief Prints the top `n` items (indexes [0..n-1]) using `printStackRange`.
  */
