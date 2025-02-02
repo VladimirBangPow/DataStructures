@@ -5,6 +5,7 @@
 #include "Deque/test_deque.h"
 #include "CircularLinkedList/test_circular_list.h"
 #include "DynamicArray/test_dynamic_array.h"
+#include "CString/test_cstring.h"
 
 int main(void) {
     testLinkedList();
@@ -18,5 +19,7 @@ int main(void) {
     testCircularList();
 
 	testDynamicArray();
+
+	testCString();
     return 0;
 }

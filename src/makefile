@@ -11,6 +11,7 @@ all:
 		Deque/deque.c Deque/test_deque.c \
 		CircularLinkedList/circular_list.c CircularLinkedList/test_circular_list.c \
 		DynamicArray/dynamic_array.c DynamicArray/test_dynamic_array.c \
+		CString/cstring.c CString/test_cstring.c \
 		-o main
 
 clean:
