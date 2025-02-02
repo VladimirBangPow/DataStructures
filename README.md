@@ -9,6 +9,9 @@ It’s impossible to name all data structures (there are infinitely many variant
 
 A contiguous block of memory storing elements of the same type. Access by index in O(1).
 Variants: Dynamic arrays (like C++ std::vector), Static arrays (fixed size).
+![Dynamic Array](diagrams/DynamicArray.png "Dynamic Array")
+
+
 ## Linked List
 ### Description
 A linked list is a fundamental data structure where each element (node) holds some data and a reference (pointer) to one or more other nodes. Unlike arrays (which store elements contiguously in memory), a linked list’s elements can be scattered throughout memory, with each node “linking” to the next node in the sequence. This structure enables flexible insertion and deletion operations without shifting large blocks of memory.
