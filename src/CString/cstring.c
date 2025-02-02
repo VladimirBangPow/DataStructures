@@ -93,6 +93,28 @@ char* c_strchr(const char* s, int c) {
     return NULL;
 }
 
+
+char* c_strrchr(const char* s, int c) {
+    // We'll keep track of the last occurrence
+    // c can be any int in C, but we only compare it as a char
+    char* last = NULL;
+
+    // Traverse the string
+    while (*s != '\0') {
+        if (*s == (char)c) {
+            last = (char*)s; // cast away const so signature matches standard
+        }
+        s++;
+    }
+
+    // Special case: if searching for '\0', return pointer to string terminator
+    if (c == '\0') {
+        return (char*)s; // pointing at the terminating '\0'
+    }
+
+    return last;
+}
+
 char* c_strstr(const char* haystack, const char* needle) {
     if (*needle == '\0') {
         // Empty needle => return haystack
@@ -195,24 +217,3 @@ char* c_strtok(char* str, const char* delimiters) {
     return token_start;
 }
 
-
-char* c_strrchr(const char* s, int c) {
-    // We'll keep track of the last occurrence
-    // c can be any int in C, but we only compare it as a char
-    char* last = NULL;
-
-    // Traverse the string
-    while (*s != '\0') {
-        if (*s == (char)c) {
-            last = (char*)s; // cast away const so signature matches standard
-        }
-        s++;
-    }
-
-    // Special case: if searching for '\0', return pointer to string terminator
-    if (c == '\0') {
-        return (char*)s; // pointing at the terminating '\0'
-    }
-
-    return last;
-}
