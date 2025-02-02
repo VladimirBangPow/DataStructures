@@ -90,6 +90,88 @@ Below is a list of commonly used C string functions from the `<string.h>` librar
   char dest[10];
   strcpy(dest, src); //dest = "Hello"
 
+#### 3. `strncpy`
+- **Description**: Copies up to n chars from one string to another. If src is shorter than n, the remaining chars in dest are padded with null bytes
+- **Syntax**: `char *strncpy(char *dest, const char *src, size_t n);`
+- **Example**: 
+  ```c
+  char str[] = "Hello";
+  char dest[10];
+  strncpy(dest, src, 3); //dest = "Hel"
+
+
+#### 4. `strcat`
+- **Description**: Appends (concatenates) one string to the end of another
+- **Syntax**: `char *strcat(char *dest, const char *src);`
+- **Example**: 
+  ```c
+  char dest[20] = "Hello";
+  char src[] = " World";
+  strcat(dest, src); //dest = "Hello World"
+
+#### 5. `strncat`
+- **Description**: Appends up to n charachters from one string to the end of another
+- **Syntax**: `char *strncat(char *dest, const char *src, size_t n);`
+- **Example**: 
+  ```c
+  char dest[20] = "Hello";
+  char src[] = " World";
+  strcat(dest, src, 3); //dest = "Hello Wo"
+
+#### 6. `strcmp`
+- **Description**: Compares two strings lexicographically. Returns 0 if the strings are equal. A negative value if str1 is less than str2. A positive value if str1 is greater than str2.
+- **Syntax**: `int strcmp(const char *str1, const char *str2);`
+- **Example**: 
+  ```c
+  char str1[] = "Hello";
+  char str2[] = "World";
+  int result = strcmp(str1, str2); //result < 0
+
+#### 7. `strncmp`
+- **Description**: Compares up to n characters of two strings lexicographically.
+- **Syntax**: `int strncmp(const char *str1, const char *str2, size_t n);`
+- **Example**: 
+  ```c
+  char str1[] = "Hello";
+  char str2[] = "Heaven";
+  int result = strcmp(str1, str2, 2); //result = 0 (first 2 characters are equal)
+
+#### 8. `strchr`
+- **Description**: Finds the first occurrence of a character in a string. Returns a pointer to the character or NULL if not found
+- **Syntax**: `char *strchr(const char *str, int c);`
+- **Example**: 
+  ```c
+  char str[] = "Hello";
+  char *ptr = strchr(str, 'e'); //ptr points to 'e'
+
+#### 9. `strrchr`
+- **Description**: Finds the last occurrence of a character in a string. Returns a pointer to the character or NULL if not found
+- **Syntax**: `char *strrchr(const char *str, int c);`
+- **Example**: 
+  ```c
+  char str[] = "Hello";
+  char *ptr = strrchr(str, 'l'); //ptr points to the second 'l'
+
+#### 10. `strstr`
+- **Description**: Finds the first occurrence of a substring in a string. Returns a pointer to the beginning of the substring or NULL if not found.
+- **Syntax**: `char *strstr(const char *haystack, const char *needle);`
+- **Example**: 
+  ```c
+  char str[] = "Hello World";
+  char *ptr = strstr(str, 'World'); //ptr points to 'World'
+
+#### 11. `strtok`
+- **Description**: Splits a string into tokens based on a set of delimiters. Modifies the original string by inserting null terminators.
+- **Syntax**: `char *strtok(char *str, const char *delim);`
+- **Example**: 
+  ```c
+  char str[] = "Hello,World,How,Are,You";
+  char *token = strtok(str, ",");
+  while (token != NULL){
+	printf("%s\n", token);
+	token = strtok(NULL, ",");
+  }
+
 ## Skip List
 
 A layered, probabilistic data structure that allows O(log n) average insertion/search/deletion.
