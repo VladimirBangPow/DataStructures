@@ -67,6 +67,21 @@ Can simulate stacks and queues, and is typically implemented via a linked list o
 Conceptually can be seen as an array of characters (plus a terminator in many languages).
 Specialized operations like concatenation, substring, etc.
 
+### Common C String Functions
+
+Below is a list of commonly used C string functions from the `<string.h>` library:
+
+---
+
+#### 1. `strlen`
+- **Description**: Calculates the length of a string (number of characters) excluding the null terminator (`\0`).
+- **Syntax**: `size_t strlen(const char *str);`
+- **Example**: 
+  ```c
+  char str[] = "Hello";
+  size_t len = strlen(str); // len = 5
+
+
 
 ## Skip List
 
