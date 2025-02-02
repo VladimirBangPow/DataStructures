@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
+#include <stdlib.h>
 #include "test_dynamic_array.h"
 #include "dynamic_array.h"
 
@@ -153,10 +154,10 @@ static void testDynamicArrayResizing(void) {
     printf("\n-- testDynamicArrayResizing --\n");
     // Start with a very small initial capacity to ensure resizing happens quickly
     DynamicArray da;
-    daInit(&da, 1);
+    daInit(&da, 1000);
 
     // We'll insert 20 integers, which definitely exceeds the initial capacity of 1
-    int count = 20;
+    int count = 10000;
     for (int i = 0; i < count; i++) {
         daPushBack(&da, &i, sizeof(i));
         // Optionally, check that the size is correctly updated after each push
@@ -196,6 +197,61 @@ static void testDynamicArrayResizing(void) {
 }
 
 
+static void testDynamicArrayOfDynamicArrays(void) {
+    printf("\n-- testDynamicArrayOfDynamicArrays --\n");
+
+    // Create the "outer" dynamic array
+    DynamicArray outer;
+    daInit(&outer, 2);
+
+    // Let's create a few "inner" dynamic arrays
+    // and store pointers to them in the outer array.
+    int numberOfInnerArrays = 3;
+    for (int i = 0; i < numberOfInnerArrays; i++) {
+        // Allocate and initialize the inner array
+        DynamicArray* inner = (DynamicArray*)malloc(sizeof(DynamicArray));
+        daInit(inner, 1);
+
+        // For demo, push a few integers into each inner array
+        for (int j = 0; j < 3; j++) {
+            int val = (i + 1) * 10 + j;  // e.g., 10,11,12 for i=0
+            daPushBack(inner, &val, sizeof(val));
+        }
+
+        // Push the pointer to 'inner' onto the outer array
+        // Notice we push the address of 'inner', with size = sizeof(inner)
+        daPushBack(&outer, &inner, sizeof(inner));
+    }
+
+    // Now we should have 'numberOfInnerArrays' elements in 'outer'
+    assert(daSize(&outer) == (size_t)numberOfInnerArrays);
+
+    // Retrieve one of the inner arrays and verify its contents
+    DynamicArray* secondInner = *(DynamicArray**)daGet(&outer, 1);
+    // The second inner array should exist and have exactly 3 elements
+    assert(secondInner != NULL);
+    assert(daSize(secondInner) == 3);
+
+    // Let's check the second element of the second inner array (index = 1)
+    const int* valPtr = (const int*)daGet(secondInner, 1);
+    assert(valPtr != NULL);
+    // If i=1, then we pushed values 20,21,22 into this array
+    assert(*valPtr == 21);
+
+    // Clean up: free each inner array's contents and then free the 'inner' pointer
+    for (size_t i = 0; i < daSize(&outer); i++) {
+        DynamicArray* innerArray = *(DynamicArray**)daGet(&outer, i);
+        daFree(innerArray); // Free internal data of the inner array
+        free(innerArray);   // Free the struct pointer itself
+    }
+
+    // Finally, free the outer array
+    daFree(&outer);
+
+    printf("testDynamicArrayOfDynamicArrays passed!\n");
+}
+
+
 /***************************************
  * Driver to run all tests
  ***************************************/
@@ -204,6 +260,7 @@ void testDynamicArray(void) {
     testDynamicArrayWithStrings();
     testDynamicArrayWithStructs();
     testDynamicArrayResizing();
+    testDynamicArrayOfDynamicArrays();
 
     printf("\nAll DynamicArray tests passed successfully!\n");
 }
