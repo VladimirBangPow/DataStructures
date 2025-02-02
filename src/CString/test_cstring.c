@@ -178,6 +178,113 @@ static void test_c_strstr(void) {
     printf("test_c_strstr passed!\n");
 }
 
+/**
+ * Helper function to test a single scenario:
+ *  1) We copy the input string to a local buffer (so we can modify it).
+ *  2) We repeatedly call c_strtok() with the given delimiters.
+ *  3) We compare the extracted tokens with the expected array of tokens.
+ */
+static void runTestCase(const char* input,
+                        const char* delimiters,
+                        const char* expectedTokens[], 
+                        int expectedCount) 
+{
+    // Make a local modifiable copy of 'input'
+    char buffer[200];
+    strncpy(buffer, input, sizeof(buffer));
+    // Ensure null-terminated
+    buffer[sizeof(buffer)-1] = '\0';
+
+    //printf("Testing input=\"%s\" with delimiters=\"%s\"...\n", input, delimiters);
+
+    // We'll extract tokens into an array of char* for easier checking
+    const char* actualTokens[50]; // up to 50 tokens
+    int actualCount = 0;
+
+    // 1) First call with 'buffer'
+    char* token = c_strtok(buffer, delimiters);
+    while (token != NULL) {
+        actualTokens[actualCount++] = token;  // pointer to substring inside buffer
+        // Subsequent calls with NULL
+        token = c_strtok(NULL, delimiters);
+    }
+
+    // 2) Verify that the actual tokens match the expected tokens
+    assert(actualCount == expectedCount && "Number of tokens does not match expectedCount");
+
+    for (int i = 0; i < actualCount; i++) {
+        assert(strcmp(actualTokens[i], expectedTokens[i]) == 0 && "Token mismatch");
+    }
+
+    //printf(" -> Passed! Extracted %d tokens as expected.\n", actualCount);
+}
+
+void test_c_strtok(void) {
+	printf("\n-- test_c_strtok --\n");
+
+    // Test Case 1: Basic space delimiter
+    {
+        const char* input = "Hello World from C";
+        const char* delimiters = " ";
+        const char* expected[] = { "Hello", "World", "from", "C" };
+        runTestCase(input, delimiters, expected, 4);
+    }
+
+    // Test Case 2: Multiple delimiters (space & comma)
+    {
+        const char* input = "One,Two  Three,,  Four";
+        const char* delimiters = " ,";  // space or comma
+        const char* expected[] = { "One", "Two", "Three", "Four" };
+        runTestCase(input, delimiters, expected, 4);
+    }
+
+    // Test Case 3: Leading delimiters
+    {
+        const char* input = "   Leading delim test";
+        const char* delimiters = " ";
+        const char* expected[] = { "Leading", "delim", "test" };
+        runTestCase(input, delimiters, expected, 3);
+    }
+
+    // Test Case 4: Trailing delimiters
+    {
+        const char* input = "Trailing test   ";
+        const char* delimiters = " ";
+        const char* expected[] = { "Trailing", "test" };
+        runTestCase(input, delimiters, expected, 2);
+    }
+
+    // Test Case 5: String with only delimiters
+    {
+        const char* input = "     ";
+        const char* delimiters = " ";
+        // No tokens
+        const char* expected[1] = { NULL };
+        runTestCase(input, delimiters, expected, 0);
+    }
+
+    // Test Case 6: Single token, no delimiters present
+    {
+        const char* input = "JustOneToken";
+        const char* delimiters = " ,";
+        const char* expected[] = { "JustOneToken" };
+        runTestCase(input, delimiters, expected, 1);
+    }
+
+    // Test Case 7: Repeated delimiter chars
+    {
+        const char* input = "!!!Hello!!!World!!!";
+        const char* delimiters = "!";
+        // Should skip consecutive '!' and find "Hello", "World"
+        const char* expected[] = { "Hello", "World" };
+        runTestCase(input, delimiters, expected, 2);
+    }
+
+    // All tests passed if we reach here
+    printf("test_c_strtok passed!\n");
+}
+
+
 // Driver function that calls all the sub-tests
 void testCString(void) {
     test_c_strlen();
@@ -189,6 +296,6 @@ void testCString(void) {
     test_c_strncat();
     test_c_strchr();
     test_c_strstr();
-
+	test_c_strtok();
     printf("\nAll string library tests passed successfully!\n");
 }

@@ -64,4 +64,17 @@ char* c_strchr(const char* s, int c);
  */
 char* c_strstr(const char* haystack, const char* needle);
 
+
+/**
+ * A custom version of strtok that behaves similarly to the standard C library function.
+ * 
+ * Usage:
+ *   - On the first call, pass the actual string in 'str'.
+ *   - On subsequent calls, pass NULL in 'str' to continue tokenizing the same string.
+ * 
+ * The function modifies the original string by inserting '\0' at each delimiter.
+ */
+char* c_strtok(char* str, const char* delimiters);
+
+
 #endif // STRING_LIB_H
