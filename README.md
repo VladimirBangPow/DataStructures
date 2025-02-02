@@ -35,7 +35,7 @@ Like a linked list except that each node has pointers to both next and previous 
 ![Double Linked List](diagrams/doubleLinkedList.png "Double Linked List")
 
 ## Circular Linked List: 
-![Double Linked Circular List](diagrams/CircularDoubleLinkedList.png "Circular Double Linked List")
+![Double Linked Circular List](diagrams/circularDoubleLinkedList.png "Circular Double Linked List")
 
 ## Stack
 
