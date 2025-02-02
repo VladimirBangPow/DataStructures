@@ -81,7 +81,14 @@ Below is a list of commonly used C string functions from the `<string.h>` librar
   char str[] = "Hello";
   size_t len = strlen(str); // len = 5
 
-
+#### 2. `strcpy`
+- **Description**: Copies the contents of one string (including the null terminator) to another
+- **Syntax**: `char *strcpy(char *dest, const char *src);`
+- **Example**: 
+  ```c
+  char str[] = "Hello";
+  char dest[10];
+  strcpy(dest, src); //dest = "Hello"
 
 ## Skip List
 
