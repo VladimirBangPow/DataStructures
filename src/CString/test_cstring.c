@@ -285,6 +285,83 @@ void test_c_strtok(void) {
 }
 
 
+/**
+ * A helper function to test a single scenario.
+ * We compare the pointer returned by my_strrchr to the pointer returned
+ * by the standard library's strrchr for reference. Then we do additional checks.
+ */
+static void runTestCase2(const char* s, int c) {
+    // printf("Testing c_strrchr with s=\"%s\" and c='%c' (or 0x%02X)\n", s, (char)c, (unsigned char)c);
+
+    // Let’s find the expected result with standard strrchr (if available).
+    // If you need strict portability, you can remove or wrap this.
+    const char* expected = strrchr(s, c);
+
+    // Use our custom function
+    char* actual = c_strrchr(s, c);
+
+    // 1) If both pointers are NULL, we are good. The character wasn't found.
+    if (!expected && !actual) {
+        // printf(" -> Both are NULL. OK.\n");
+        return;
+    }
+
+    // 2) Otherwise, we check if they're both non-NULL and pointing to equivalent location
+    // The standard library might return a pointer into s; likewise, we do the same.
+    // Compare the difference from the start of the string.
+    if (expected && actual) {
+        // offset from the start
+        ptrdiff_t expectedOffset = expected - s;
+        ptrdiff_t actualOffset = actual - s;
+        assert(expectedOffset == actualOffset && "Offsets do not match!");
+        // printf(" -> Both point to s[%td]. OK.\n", actualOffset);
+
+        // Double-check the character is indeed c
+        assert(*actual == (char)c || (c == '\0' && *actual == '\0'));
+    } else {
+        // Mismatch: one is NULL, the other is not
+        assert(0 && "One pointer is NULL while the other is not!");
+    }
+}
+
+/**
+ * Test driver for my_strrchr. Exercises various cases with asserts.
+ */
+void test_c_strrchr(void) {
+    printf("\n--- test_c_strrchr ---\n");
+
+    // 1) Character appears multiple times
+    runTestCase2("Hello World, Hello Universe!", 'o');
+    // Last 'o' is in "Hello Universe!" => index 25 if zero-based
+
+    // 2) Character appears only once
+    runTestCase2("abcdefg", 'f');
+
+    // 3) Character does not appear at all
+    runTestCase2("abcdefg", 'X');
+
+    // 4) Searching for '\0' (null terminator)
+    // We expect strrchr to return pointer to the terminating '\0'.
+    runTestCase2("abcdefg", '\0');
+
+    // 5) Empty string edge case
+    runTestCase2("", 'a');
+    runTestCase2("", '\0'); // should point to the '\0' at the start
+
+    // 6) Last char is the one we’re searching for
+    runTestCase2("abcxyz!", '!');
+
+    // 7) Repeated char at the end
+    runTestCase2("Test ???", '?');
+
+    // 8) Some repeated middle char to confirm we get the last
+    runTestCase2("Mississippi", 's'); // The last 's' is at index 5-based from end or so
+
+    printf("test_c_strrchr passed!\n");
+}
+
+
+
 // Driver function that calls all the sub-tests
 void testCString(void) {
     test_c_strlen();
@@ -295,6 +372,7 @@ void testCString(void) {
     test_c_strcat();
     test_c_strncat();
     test_c_strchr();
+	test_c_strrchr();
     test_c_strstr();
 	test_c_strtok();
     printf("\nAll string library tests passed successfully!\n");

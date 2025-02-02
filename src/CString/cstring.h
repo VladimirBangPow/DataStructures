@@ -59,6 +59,15 @@ char* c_strncat(char* dest, const char* src, size_t n);
 char* c_strchr(const char* s, int c);
 
 /**
+ * Locates the last occurrence of character c in the C-string s.
+ * Returns a pointer to that character in s, or NULL if not found.
+ * If c == '\0', returns a pointer to the terminator at the end of s.
+ */
+char* c_strrchr(const char* s, int c);
+
+
+
+/**
  * Locate the first occurrence of substring needle in haystack.
  * Returns pointer to the beginning of the substring, or NULL if not found.
  */
