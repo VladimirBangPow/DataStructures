@@ -5,10 +5,10 @@ Data Structures in C
 It’s impossible to name all data structures (there are infinitely many variants and specialized forms), but below is a comprehensive overview of many commonly known or fundamental data structures. They are often grouped by the type of operations they support and how they store data. Each bullet below is itself a broad category or a well-defined data structure.
 
 # 1. Linear Data Structures
-## Array
+## Dynamic Array
 
-A contiguous block of memory storing elements of the same type. Access by index in O(1).
-Variants: Dynamic arrays (like C++ std::vector), Static arrays (fixed size).
+A contiguous block of memory storing elements of the same type or of different types (generic Dynamic Array). Access by index in O(1).
+
 ![Dynamic Array](diagrams/DynamicArray.png "Dynamic Array")
 
 
