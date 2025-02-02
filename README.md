@@ -58,7 +58,11 @@ Often implemented with arrays or linked lists.
 
 Allows insertion and removal at both ends.
 Can simulate stacks and queues, and is typically implemented via a linked list or a specialized array structure.
-String
+
+![Deque](diagrams/Deque.png "Deque")
+
+
+## String
 
 Conceptually can be seen as an array of characters (plus a terminator in many languages).
 Specialized operations like concatenation, substring, etc.
