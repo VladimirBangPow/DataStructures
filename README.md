@@ -177,6 +177,9 @@ Below is a list of commonly used C string functions from the `<string.h>` librar
 
 ## Skip List
 
+![Skip List](diagrams/SkipList.png "Skip List")
+
+
 A layered, probabilistic data structure that allows O(log n) average insertion/search/deletion.
 Conceptually built on top of a linked list with additional “express” links to skip over nodes.
 Hash Table (a blend of linear and specialized structure)
