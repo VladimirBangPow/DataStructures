@@ -10,6 +10,10 @@
  * - As long as the random value is < probability AND we haven't reached maxLevel, you go one level higher.
  * - 'probability' is typically between 0 and 1 (e.g., 0.5).
  * - This is commonly used in skip-list implementations to decide how tall a node tower is.
+ 
+ * - In other words, this is Probabilistic Promotion: 
+ * - When a new element is inserted into the skip list, a coin flip determines how many levels it will be promoted to.
+ * - If the coin flip is heads, the element is promoted to the next level. This process continues until the coin flip is tails.
  */
 static int slRandomLevel(int maxLevel, float probability)
 {
