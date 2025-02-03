@@ -182,7 +182,8 @@ Below is a list of commonly used C string functions from the `<string.h>` librar
 
 A layered, probabilistic data structure that allows O(log n) average insertion/search/deletion.
 Conceptually built on top of a linked list with additional “express” links to skip over nodes.
-Hash Table (a blend of linear and specialized structure)
+
+## Hash Table (a blend of linear and specialized structure)
 
 Stores key–value pairs for average O(1) lookup and insertion, but can degrade to O(n) in worst case.
 Common collision handling methods: chaining (linked lists) or open addressing (linear probing, quadratic probing, etc.).
