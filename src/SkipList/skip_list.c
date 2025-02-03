@@ -4,17 +4,26 @@
 #include <time.h>   // (optional) for seeding rand in slInit or externally
 
 /**
- * Helper: Generate a random level between 1 and maxLevel, 
- * promoting with probability 'p' each time.
+ * Returns a "random level" in the range [1, maxLevel], based on a probability 'probability'.
+ *
+ * - You start at level 1.
+ * - As long as the random value is < probability AND we haven't reached maxLevel, you go one level higher.
+ * - 'probability' is typically between 0 and 1 (e.g., 0.5).
+ * - This is commonly used in skip-list implementations to decide how tall a node tower is.
  */
-static int slRandomLevel(int maxLevel, float p)
+static int slRandomLevel(int maxLevel, float probability)
 {
-    int lvl = 1;
-    // Keep increasing level while random < p, up to maxLevel
-    while (((float)rand() / RAND_MAX) < p && lvl < maxLevel) {
-        lvl++;
+    // We begin at level 1
+    int currentLevel = 1;
+
+    // Keep increasing the level while:
+    //   1) a random float [0,1) is less than 'probability'
+    //   2) we have not already reached the maximum level (maxLevel)
+    while (((float)rand() / (float)RAND_MAX) < probability && currentLevel < maxLevel) {
+        currentLevel++;
     }
-    return lvl;
+
+    return currentLevel;
 }
 
 void slInit(SkipList *sl, int maxLevel, float probability,
