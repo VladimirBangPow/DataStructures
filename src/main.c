@@ -6,6 +6,7 @@
 #include "CircularLinkedList/test_circular_list.h"
 #include "DynamicArray/test_dynamic_array.h"
 #include "CString/test_cstring.h"
+#include "SkipList/test_skip_list.h"
 
 int main(void) {
     testLinkedList();
@@ -21,5 +22,7 @@ int main(void) {
 	testDynamicArray();
 
 	testCString();
+    testSkipList();
+    
     return 0;
 }

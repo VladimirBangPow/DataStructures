@@ -12,6 +12,7 @@ all:
 		CircularLinkedList/circular_list.c CircularLinkedList/test_circular_list.c \
 		DynamicArray/dynamic_array.c DynamicArray/test_dynamic_array.c \
 		CString/cstring.c CString/test_cstring.c \
+		SkipList/skip_list.c SkipList/test_skip_list.c \
 		-o main
 
 clean:
