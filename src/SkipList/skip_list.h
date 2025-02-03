@@ -23,6 +23,12 @@ typedef void (*SkipListFreeFunc)(void *data);
  * A single node in the skip list.
  *  - data: generic pointer to user data
  *  - forward: dynamic array of pointers to nodes (one for each level)
+ *  - forward[0] would link to the next node in the lowest level (level 0)
+ *  - forward[1] would link to the next node in the second level, and so on
+ *  - So conceptually, you have:
+		Level 0: Every element is stored in a linked list sequence (forward[0] pointers).
+		Level 1: Only some elements (randomly chosen) are stored, each linking via forward[1].
+		Level 2: Even fewer elements, each linking via forward[2].
  */
 typedef struct SkipListNode {
     void *data;

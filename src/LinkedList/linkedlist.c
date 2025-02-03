@@ -229,3 +229,63 @@ void sortList(Node** head, CompareFunc compare) {
     }
     *head = mergeSort(*head, compare);
 }
+
+void insertInSortedOrder(Node** head, const void* data, size_t data_size, CompareFunc cmp)
+{
+    // Temporary dummy node to simplify edge-case handling
+    Node dummy = {0};
+    dummy.next = *head;
+
+    Node* prev = &dummy;
+    // Traverse until we find a node where 'data' should be inserted before it
+    while (prev->next && cmp(prev->next->data, data) < 0) {
+        prev = prev->next;
+    }
+
+    // Create and link in the new node
+    Node* newNode = createNode(data, data_size);
+    newNode->next = prev->next;
+    prev->next = newNode;
+
+    // Update the actual head pointer in case insertion happened at the front
+    *head = dummy.next;
+}
+
+// Removes the first node in the list matching `data` (by compare function).
+// If `outData` is non-null, we copy the removed node's data out before freeing.
+//
+// Returns 1 if removal was successful, 0 if item was not found.
+int removeValue(Node** head, const void* data, CompareFunc cmp, void* outData)
+{
+    if (!head || !*head) return 0;
+
+    // Temporary dummy node again
+    Node dummy = {0};
+    dummy.next = *head;
+
+    Node* prev = &dummy;
+    // Traverse until we find a matching node or reach the end
+    while (prev->next && cmp(prev->next->data, data) != 0) {
+        prev = prev->next;
+    }
+
+    // If we hit the end, item not found
+    if (!prev->next) {
+        return 0;
+    }
+
+    // Otherwise, remove that node
+    Node* toRemove = prev->next;
+    prev->next = toRemove->next;
+
+    if (outData) {
+        // Copy out the data
+        memcpy(outData, toRemove->data, toRemove->data_size);
+    }
+    free(toRemove->data);
+    free(toRemove);
+
+    // Update head pointer
+    *head = dummy.next;
+    return 1;
+}

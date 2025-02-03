@@ -115,4 +115,9 @@ int removeAtPosition(Node** head, int position, void* outData);
  */
 void sortList(Node** head, CompareFunc compare);
 
+
+void insertInSortedOrder(Node** head, const void* data, size_t data_size, CompareFunc cmp);
+
+int removeValue(Node** head, const void* data, CompareFunc cmp, void* outData);
+
 #endif // LINKEDLIST_H

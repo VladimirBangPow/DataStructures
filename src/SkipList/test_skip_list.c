@@ -1,9 +1,11 @@
 #include "test_skip_list.h"
 #include "skip_list.h"
-#include <assert.h>
+#include "../LinkedList/linkedlist.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <string.h>
+#include <time.h>
 
 /************************************************
  * COMPARATOR FUNCTIONS
@@ -167,6 +169,161 @@ static void removePoints(SkipList *sl, const MyPoint *points, int count)
     }
 }
 
+// For the singly linked list, we only need to store the integer value
+// We won't do a separate free because we'll handle it inside Node itself.
+
+// Timer function
+static double get_time_seconds(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec + (double)ts.tv_nsec / 1e9;
+}
+
+// Shuffle an array of int in-place
+static void shuffle(int *array, int n) {
+    if (n > 1) {
+        for (int i = 0; i < n - 1; i++) {
+            int j = i + rand() / (RAND_MAX / (n - i) + 1);
+            int temp = array[j];
+            array[j] = array[i];
+            array[i] = temp;
+        }
+    }
+}
+
+// Compare performance of SkipList vs. Sorted Linked List on `n` elements
+static void benchmarkComparison(int n)
+{
+    // Prepare data
+    int *values = malloc(n * sizeof(int));
+    for (int i = 0; i < n; i++) {
+        values[i] = i;
+    }
+    shuffle(values, n);
+
+    /*************************
+     * 1) SkipList benchmark *
+     *************************/
+    SkipList sl;
+    slInit(&sl, 12, 0.5f, intComparator, free); // We'll just free() int pointers
+
+    // a) Insert
+    double start = get_time_seconds();
+    for (int i = 0; i < n; i++) {
+        int *valPtr = malloc(sizeof(int));
+        *valPtr = values[i];
+        bool ok = slInsert(&sl, valPtr);
+        (void)ok; // If you want to assert, you can: assert(ok);
+    }
+    double end = get_time_seconds();
+    double slInsertTime = end - start;
+
+    // b) Search
+    // Re-shuffle for random search order
+    shuffle(values, n);
+    start = get_time_seconds();
+    for (int i = 0; i < n; i++) {
+        bool found = slSearch(&sl, &values[i]);
+        (void)found; // or assert(found)
+    }
+    end = get_time_seconds();
+    double slSearchTime = end - start;
+
+    // c) Remove
+    // Re-shuffle for random removal order
+    shuffle(values, n);
+    start = get_time_seconds();
+    for (int i = 0; i < n; i++) {
+        bool removed = slRemove(&sl, &values[i]);
+        (void)removed; // or assert(removed)
+    }
+    end = get_time_seconds();
+    double slRemoveTime = end - start;
+
+    slFree(&sl);
+
+    /******************************************
+     * 2) Sorted Linked List (naïve) benchmark *
+     ******************************************/
+    // Rebuild the same data
+    for (int i = 0; i < n; i++) {
+        values[i] = i;
+    }
+    shuffle(values, n);
+
+    Node* head = NULL; // singly linked list head
+
+    // a) Insert (in sorted order)
+    start = get_time_seconds();
+    for (int i = 0; i < n; i++) {
+        // Because our Node stores a copy, we can just pass &values[i]
+        insertInSortedOrder(&head, &values[i], sizeof(int), intComparator);
+    }
+    end = get_time_seconds();
+    double llInsertTime = end - start;
+
+    // b) Search
+    shuffle(values, n);
+    start = get_time_seconds();
+    for (int i = 0; i < n; i++) {
+        Node* found = search(head, &values[i], intComparator);
+        (void)found; // or assert(found != NULL)
+    }
+    end = get_time_seconds();
+    double llSearchTime = end - start;
+
+    // c) Remove
+    shuffle(values, n);
+    start = get_time_seconds();
+    for (int i = 0; i < n; i++) {
+        // removeValue will do a linear search and remove the node
+        int success = removeValue(&head, &values[i], intComparator, NULL);
+        (void)success; // or assert(success == 1)
+    }
+    end = get_time_seconds();
+    double llRemoveTime = end - start;
+
+    freeList(&head); // Clean up any leftover nodes if needed
+
+    // Print final results
+    printf("\n\n=== Benchmark n=%d ===\n", n);
+    printf("SkipList:\n");
+    printf("  Insert  : %.6f sec  (%.2f us/op)\n",
+           slInsertTime, (slInsertTime / n) * 1e6);
+    printf("  Search  : %.6f sec  (%.2f us/op)\n",
+           slSearchTime, (slSearchTime / n) * 1e6);
+    printf("  Remove  : %.6f sec  (%.2f us/op)\n",
+           slRemoveTime, (slRemoveTime / n) * 1e6);
+
+    printf("Linked List (Sorted Insert):\n");
+    printf("  Insert  : %.6f sec  (%.2f us/op)\n",
+           llInsertTime, (llInsertTime / n) * 1e6);
+    printf("  Search  : %.6f sec  (%.2f us/op)\n",
+           llSearchTime, (llSearchTime / n) * 1e6);
+    printf("  Remove  : %.6f sec  (%.2f us/op)\n",
+           llRemoveTime, (llRemoveTime / n) * 1e6);
+
+    free(values);
+}
+
+// You can call this in your main() or inside testSkipList()
+static void runBenchmarks(void)
+{
+    srand((unsigned)time(NULL));
+
+    // Warm-up / smaller tests
+    benchmarkComparison(10000);
+    benchmarkComparison(50000);
+
+    // Larger tests
+    benchmarkComparison(100000);
+    // benchmarkComparison(500000);
+    // // If your hardware allows, you can go even bigger:
+    // benchmarkComparison(1000000);
+}
+
+
+
 /************************************************
  * The main test function
  ***********************************************/
@@ -299,5 +456,6 @@ void testSkipList(void)
         printf("Struct skip list test passed!\n");
     }
 
+	runBenchmarks();
     printf("All SkipList tests passed!\n");
 }
