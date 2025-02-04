@@ -58,31 +58,97 @@ bool slInsert(SkipList *sl, void *data){
 	//that means we insert right before the greater value. If not NULL we
 	//traverse right again until we see a value greater than our own.
 	// 
-
-	/* insert(1)
-	    --------- 8
-       /     
-	  2           8
-      |
-	  2     5     8
-     /
-	1 2 3 4 5 6 7 8 9
-	1 found, return false
+	/*
+		insert 5
+		head-->[NULL]
+		we insert the data into the skiplistnode and return true
+	
+	*/
+	/*
+		insert 6
+              NULL
+			   ^
+		       |
+		NULL<--5-->NULL
+		       |
+			   v
+		       NULL
+		we traverse right until NULL or until we see something greater
+		we see NULL. Now we want to go down until we see NULL. We see NULL
+		immediately so we know that we are at the bottom. Insert 6 tower 
+		
 	*/
 
 	/*
-	    --------- 8
-       /     
-	  2           8
-      |
-	  2     5     8
-      |
-	  2 3 4 5 6 7 8 9
-	  |
-	  NULL
-	1 not found, insert 1 tower before 2, return true
+		insert 4
+        head------>6-->
+			   ^   ^
+		       |   |
+		    <--5-->6-->
+		       |   |
+			   v   v
+		 Sometimes we need to traverse left in the same way we traverse right
+		 So if 6 overshoots when we are searching for 4, we move down the 6
+		 tower. We now need to traverse left until we see something less than 4
+		 or NULL (whichever comes first). In this case we see NULL, so we know we
+		 must move down, but wait! We are already at the base level because we see
+		 NULL. So that means we insert our 4 tower before 5 at the base level
 	
 	*/
+
+
+	/*
+		insert 8
+
+               ^
+			   |
+		head-->4---------->
+               ^
+		       |
+	           4------>6-->
+			   ^   ^   ^
+		       |   |   |
+		    <--4<--5-->6-->
+		       |   |   |
+			   v   v   v
+		 Here we want to insert 8. So we see 4 at the head, and know
+		 we must go right or down. The next pointer points to NULL, so
+		 we must go down one level. We move right and see 6, that's not
+		 far enough we must keep going until we reach something greater
+		 or equal to 8, or NULL, whichever comes first. In this case we hit
+		 NULL, so we go down once more. Here we test to see if we are at
+		 the bottom level, and we are. So we know we must traverse right.
+		 We see Null before we see anything greater than 8, so we place the
+		 8 tower there.
+	
+	*/
+
+
+	/*
+		insert 7
+
+               ^
+			   |
+		head-->4---------->
+               ^
+		       |
+	           4------>6-->
+			   ^   ^   ^
+		       |   |   |
+		    <--4<--5-->6-->8-->
+		       |   |   |   |
+			   v   v   v   v
+		 Here we want to insert 7. So we see 4 at the head, and know
+		 we must go right or down. The next pointer points to NULL, so
+		 we must go down one level. We move right and see 6, that's not
+		 far enough we must keep going until we reach something greater
+		 or equal to 8, or NULL, whichever comes first. In this case we hit
+		 NULL, so we go down once more. Here we test to see if we are at
+		 the bottom level, and we are. So we know we must traverse right.
+		 We see 8 before NULL, so we place the 7 tower right before 8.
+	
+	*/
+
 	return true;
 }
 
