@@ -74,9 +74,37 @@ bool slInsert(SkipList *sl, void *data){
 	} else{
 		//Break things down into atomic actions and perform recursively:
 		//when do we move right?
+		//We move right when next-> is not NULL and next->data is less than our data
 		//when do we move down?
+		//when next-> is NULL or when next->data is greater than our data
 		//when do we move left?
+		//when prev-> is not NULL and prev->data is greater than our data
 		//when do we add a node?
+		//when do we exit?
+		//when we find a match for our value, or when we are done building the tower
+
+		//is it possible that our conditions will have us move left and right?
+		//is it possible for next->data to be less than our data and prev->data to be greater?
+		//no
+		//is it possible that we can move down and right at the same time?
+		//when next-data is greater than our data, it can't also be smaller than our data
+		//no
+		//is it possible that we can move left and down at the same time?
+		//when next->data is greater, then prev->data cannot be greater
+		//but when next is NULL, then prev-data can be greater
+		//Rule of thumb, check right first, then left, then down, then add
+		
+		/* insert 2 
+		    NULL<-------4-->NULL
+			            |
+			NULL<--3<--[4]-->NULL
+		           |    |
+				   v    v
+		
+
+		
+		*/
+
 	}
 
 	return true;
