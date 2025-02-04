@@ -49,15 +49,29 @@ bool slInsert(SkipList *sl, void *data){
 	//and traverse right until we see our value, see NULL, or see 
 	//a value greater than our value. 
 	//a. If we see our value return false
-	//b. If we see NULL we begin the insertion process by going all the way
-	//down until we hit NULL. If we hit NULL, then we traverse right until
-	//we hit a value greater than our own. Insert right before that value. Update
-	//all four references. Below =NULL, next and prev are obvious. Above
-	//is tricky
-	//c. If we see a value greater than our own, we go down a level. If NULL
-	//that means we insert right before the greater value. If not NULL we
-	//traverse right again until we see a value greater than our own.
-	// 
+	//b. If we see a value greater than ours, we over shot. We use the
+	//node tower to go down. Now we need to look left and traverse.
+	//c. If we see NULL before we see a value greater we go down 
+	//using the last node tower. Then we repeat the process. If 
+	//we see our value return false, if we see NULL before we see a value
+	//greater we go down using the last node tower.
+	//IF AT ANY POINT: we reach the bottom without finding our node
+	//we insert after a value less than and before a value greater. 
+	//(NULL to the left is like negative infinity, etc)
+
+
+	return true;
+}
+
+bool slSearch(const SkipList *sl, const void *data){
+	return true;
+}
+
+bool slRemove(SkipList *sl, const void *data){
+	return true;
+}
+
+
 	/*
 		insert 5
 		head-->[NULL]
@@ -148,14 +162,3 @@ bool slInsert(SkipList *sl, void *data){
 		 We see 8 before NULL, so we place the 7 tower right before 8.
 	
 	*/
-
-	return true;
-}
-
-bool slSearch(const SkipList *sl, const void *data){
-	return true;
-}
-
-bool slRemove(SkipList *sl, const void *data){
-	return true;
-}
