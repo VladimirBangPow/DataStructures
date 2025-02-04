@@ -4,6 +4,16 @@
 #include <stdio.h>  // for fprintf, NULL checks, etc.
 #include <time.h>   // (optional) for seeding rand in slInit or externally
 
+typedef enum {
+    RIGHT,     // 0
+    LEFT,     // 1
+    DOWN_RIGHT,    // 2
+    DOWN_LEFT,  // 3
+    FOUND,   // 4
+    ADD,     // 5
+	NONE
+} Actions;
+
 static int getLevelFromCoinFlips(){
 	int currentLevel = 0;
 	float probability = 0.5f;
@@ -51,20 +61,7 @@ void slFree(SkipList *sl){
 }
 
 bool slInsert(SkipList *sl, void *data){
-	//Case 1: empty list. We need to initialize existing head with data
-	//Case 2: One or more nodes in list. We need to start at head, 
-	//and traverse right until we see our value, see NULL, or see 
-	//a value greater than our value. 
-	//a. If we see our value return false
-	//b. If we see a value greater than ours, we over shot. We use the
-	//node tower to go down. Now we need to look left and traverse.
-	//c. If we see NULL before we see a value greater we go down 
-	//using the last node tower. Then we repeat the process. If 
-	//we see our value return false, if we see NULL before we see a value
-	//greater we go down using the last node tower.
-	//IF AT ANY POINT: we reach the bottom without finding our node
-	//we insert after a value less than and before a value greater. 
-	//(NULL to the left is like negative infinity, etc)
+
 	SkipListNode *current=sl->head;
 
 	if (slIsEmpty(sl)){
@@ -72,26 +69,48 @@ bool slInsert(SkipList *sl, void *data){
 		printf("sl is empty, initializing existing head with data %d\n", *( (int *)sl->head->data ) );
 
 	} else{
+		Actions previousMove = NONE;
+		printf("%d\n", previousMove);
+		SkipListNode *current = head;
+		while (true){
+			if ((current->next != NULL)&& (sl->cmp(current->next->data, data)<0)){
+				printf("Moving right");
+			}else if ((current->prev != NULL) && (sl->cmp(current->prev->data, data)>0)){
+				printf("Moving left");
+			}else if (((current->next==NULL)||(sl->cmp(current->next->data, data)>0))&&previousMove==RIGHT){
+				printf("Moving Down Right");
+
+			}else if (((current->prev==NULL)||(sl->cmp(current->prev->data, data)<0))&&previousMove==LEFT){
+				printf("Moving Down Left");
+			}else if ((sl->cmp(current->data, data)==0)||((current->next!=NULL)&&(sl->cmp(current->next->data, data)==0))||((current->prev!=NULL)&&(sl->cmp(current->prev->data, data)==0))){
+				printf("FOUND");
+				return false;
+			}else
+		}
 		//Break things down into atomic actions and perform recursively:
 		//when do we move right?
 		//We move right when next-> is not NULL and next->data is less than our data
-		//when do we move down?
-		//when next-> is NULL or when next->data is greater than our data
+			
 		//when do we move left?
 		//when prev-> is not NULL and prev->data is greater than our data
+			
+		//when do we move down (bias right)?
+		//when next-> is NULL or when next->data is greater than our data
+		
+		//when do we move down (bias left)?
+		//when prev-> is NULL or when prev->data is less than our data
+
+
 		//when do we add a node?
+		
 		//when do we exit?
 		//when we find a match for our value, or when we are done building the tower
 
-		//is it possible that our conditions will have us move left and right?
-		//is it possible for next->data to be less than our data and prev->data to be greater?
-		//no
-		//is it possible that we can move down and right at the same time?
-		//when next-data is greater than our data, it can't also be smaller than our data
-		//no
+
 		//is it possible that we can move left and down at the same time?
 		//when next->data is greater, then prev->data cannot be greater
 		//but when next is NULL, then prev-data can be greater
+		
 		//Rule of thumb, check right first, then left, then down, then add
 		
 		/* insert 2 
@@ -100,9 +119,7 @@ bool slInsert(SkipList *sl, void *data){
 			NULL<--3<--[4]-->NULL
 		           |    |
 				   v    v
-		
-
-		
+	
 		*/
 
 	}
