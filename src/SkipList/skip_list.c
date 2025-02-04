@@ -16,8 +16,13 @@ static int getLevelFromCoinFlips(){
 
     return currentLevel;
 }
-
-void slInit(SkipList *sl){
+static int slIsEmpty(const SkipList *sl){
+	if ((sl->head->next==NULL) && (sl->head->data==NULL)){
+		return 1;
+	}
+	return 0;
+}
+void slInit(SkipList *sl, SkipListComparator cmp, SkipListFreeFunc freeFunc){
 	srand((unsigned int) time(NULL));  // Seed the RNG
 
 	/*
@@ -29,12 +34,14 @@ void slInit(SkipList *sl){
         fprintf(stderr, "Failed to allocate skip list header.\n");
         exit(EXIT_FAILURE);
     }
+	sl->cmp=cmp;
+	sl->freeFunc=freeFunc;
     sl->head->data = NULL; // no real data in header
     sl->head->above = NULL;
 	sl->head->below = NULL;
 	sl->head->next = NULL;
 	sl->head->prev = NULL;
-
+	// printf("%p", sl->head);
 	// printf("%d\n", getLevelFromCoinFlips());
 	return;
 }
@@ -58,10 +65,24 @@ bool slInsert(SkipList *sl, void *data){
 	//IF AT ANY POINT: we reach the bottom without finding our node
 	//we insert after a value less than and before a value greater. 
 	//(NULL to the left is like negative infinity, etc)
+	SkipListNode *current=sl->head;
 
+	if (slIsEmpty(sl)){
+		sl->head->data=data;
+		printf("sl is empty, initializing existing head with data %d\n", *( (int *)sl->head->data ) );
+
+	} else{
+		//Break things down into atomic actions and perform recursively:
+		//when do we move right?
+		//when do we move down?
+		//when do we move left?
+		//when do we add a node?
+	}
 
 	return true;
 }
+
+
 
 bool slSearch(const SkipList *sl, const void *data){
 	return true;
