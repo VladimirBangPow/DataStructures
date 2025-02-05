@@ -1,230 +1,211 @@
-
 #include "skip_list.h"
 #include <stdlib.h> // for malloc, free, rand
 #include <stdio.h>  // for fprintf, NULL checks, etc.
 #include <time.h>   // (optional) for seeding rand in slInit or externally
 
-typedef enum {
-    RIGHT,     // 0
-    LEFT,     // 1
-    DOWN_RIGHT,    // 2
-    DOWN_LEFT,  // 3
-    FOUND,   // 4
-    ADD,     // 5
-	NONE
-} Actions;
 
-static int getLevelFromCoinFlips(){
-	int currentLevel = 0;
-	float probability = 0.5f;
+
+
+
+/**
+ * Returns a "random level" in the range [1, maxLevel], based on a probability 'probability'.
+ *
+ * - You start at level 1.
+ * - As long as the random value is < probability AND we haven't reached maxLevel, you go one level higher.
+ * - 'probability' is typically between 0 and 1 (e.g., 0.5).
+ * - This is commonly used in skip-list implementations to decide how tall a node tower is.
+ 
+ * - In other words, this is Probabilistic Promotion: 
+ * - When a new element is inserted into the skip list, a coin flip determines how many levels it will be promoted to.
+ * - If the coin flip is heads, the element is promoted to the next level. This process continues until the coin flip is tails.
+ */
+static int slRandomLevel(int maxLevel, float probability)
+{
+    // We begin at level 1
+    int currentLevel = 1;
+
     // Keep increasing the level while:
     //   1) a random float [0,1) is less than 'probability'
     //   2) we have not already reached the maximum level (maxLevel)
-    while (((float)rand() / (float)RAND_MAX) < probability) {
+    while (((float)rand() / (float)RAND_MAX) < probability && currentLevel < maxLevel) {
         currentLevel++;
     }
 
     return currentLevel;
 }
-static int slIsEmpty(const SkipList *sl){
-	if ((sl->head->next==NULL) && (sl->head->data==NULL)){
-		return 1;
-	}
-	return 0;
-}
-void slInit(SkipList *sl, SkipListComparator cmp, SkipListFreeFunc freeFunc){
-	srand((unsigned int) time(NULL));  // Seed the RNG
 
-	/*
-		1. list is empty, so we initialize an empty sl node
-	*/
+void slInit(SkipList *sl, int maxLevel, float probability,
+            SkipListComparator cmp, SkipListFreeFunc freeFunc)
+{
+    // Optionally seed the RNG here or from main
+    // srand((unsigned)time(NULL));  // can be done outside as well
 
-	sl->head = (SkipListNode *)malloc(sizeof(SkipListNode));
-    if (!sl->head) {
+    sl->maxLevel = maxLevel;
+    sl->probability = probability;
+    sl->level = 1; // empty skip list starts with level 1
+    sl->cmp = cmp;
+    sl->freeFunc = freeFunc;
+
+    // Allocate header node
+    sl->header = (SkipListNode *)malloc(sizeof(SkipListNode));
+    if (!sl->header) {
         fprintf(stderr, "Failed to allocate skip list header.\n");
         exit(EXIT_FAILURE);
     }
-	sl->cmp=cmp;
-	sl->freeFunc=freeFunc;
-    sl->head->data = NULL; // no real data in header
-    sl->head->above = NULL;
-	sl->head->below = NULL;
-	sl->head->next = NULL;
-	sl->head->prev = NULL;
-	// printf("%p", sl->head);
-	// printf("%d\n", getLevelFromCoinFlips());
-	return;
+    sl->header->data = NULL; // no real data in header
+
+    // "forward" array for header is size maxLevel
+    sl->header->forward = (SkipListNode **)malloc(sizeof(SkipListNode *) * maxLevel);
+    if (!sl->header->forward) {
+        fprintf(stderr, "Failed to allocate header forward array.\n");
+        free(sl->header);
+        exit(EXIT_FAILURE);
+    }
+    // Initialize all forward pointers to NULL
+    for (int i = 0; i < maxLevel; i++) {
+        sl->header->forward[i] = NULL;
+    }
 }
 
-void slFree(SkipList *sl){
-	return;
+void slFree(SkipList *sl)
+{
+    // Free all nodes except header first
+    SkipListNode *current = sl->header->forward[0]; // first actual node in level 0
+    while (current) {
+        SkipListNode *temp = current->forward[0]; // move to next
+        // If we have a freeFunc, free the data
+        if (sl->freeFunc) {
+            sl->freeFunc(current->data);
+        }
+        free(current->forward);
+        free(current);
+        current = temp;
+    }
+
+    // Free the header node
+    free(sl->header->forward);
+    free(sl->header);
+    sl->header = NULL;
+    sl->level = 0;
 }
 
-bool slInsert(SkipList *sl, void *data){
+bool slInsert(SkipList *sl, void *data)
+{
+    // update[] will hold pointers to nodes that must be updated
+    // so they can point to our new node where needed.
+    SkipListNode *update[sl->maxLevel];
+    SkipListNode *current = sl->header;
 
-	SkipListNode *current=sl->head;
+    // 1. Search from top level down to find insertion point
+    for (int i = sl->level - 1; i >= 0; i--) {
+        // Move right while next is < data
+        while (current->forward[i] &&
+               sl->cmp(current->forward[i]->data, data) < 0)
+        {
+            current = current->forward[i];
+        }
+        update[i] = current;
+    }
+    // Now we are at level 0, just before where 'data' should be
+    current = current->forward[0];
+    // Check if data already exists
+    if (current && sl->cmp(current->data, data) == 0) {
+        // The data is already in the list, do not insert
+        return false;
+    }
 
-	if (slIsEmpty(sl)){
-		sl->head->data=data;
-		printf("sl is empty, initializing existing head with data %d\n", *( (int *)sl->head->data ) );
+    // 2. Generate random level for this node
+    int newLevel = slRandomLevel(sl->maxLevel, sl->probability);
+    // If newLevel is larger than the current skip list level, update
+    if (newLevel > sl->level) {
+        for (int i = sl->level; i < newLevel; i++) {
+            update[i] = sl->header;
+        }
+        sl->level = newLevel;
+    }
 
-	} else{
-		Actions previousMove = NONE;
-		printf("%d\n", previousMove);
-		SkipListNode *current = head;
-		while (true){
-			if ((current->next != NULL)&& (sl->cmp(current->next->data, data)<0)){
-				printf("Moving right");
-			}else if ((current->prev != NULL) && (sl->cmp(current->prev->data, data)>0)){
-				printf("Moving left");
-			}else if (((current->next==NULL)||(sl->cmp(current->next->data, data)>0))&&previousMove==RIGHT){
-				printf("Moving Down Right");
+    // 3. Create the new node
+    SkipListNode *newNode = (SkipListNode *)malloc(sizeof(SkipListNode));
+    if (!newNode) {
+        fprintf(stderr, "Failed to allocate skip list node.\n");
+        exit(EXIT_FAILURE);
+    }
+    newNode->data = data;
+    newNode->forward = (SkipListNode **)malloc(sizeof(SkipListNode *) * newLevel);
+    if (!newNode->forward) {
+        fprintf(stderr, "Failed to allocate node->forward array.\n");
+        free(newNode);
+        exit(EXIT_FAILURE);
+    }
 
-			}else if (((current->prev==NULL)||(sl->cmp(current->prev->data, data)<0))&&previousMove==LEFT){
-				printf("Moving Down Left");
-			}else if ((sl->cmp(current->data, data)==0)||((current->next!=NULL)&&(sl->cmp(current->next->data, data)==0))||((current->prev!=NULL)&&(sl->cmp(current->prev->data, data)==0))){
-				printf("FOUND");
-				return false;
-			}else
-		}
-		//Break things down into atomic actions and perform recursively:
-		//when do we move right?
-		//We move right when next-> is not NULL and next->data is less than our data
-			
-		//when do we move left?
-		//when prev-> is not NULL and prev->data is greater than our data
-			
-		//when do we move down (bias right)?
-		//when next-> is NULL or when next->data is greater than our data
-		
-		//when do we move down (bias left)?
-		//when prev-> is NULL or when prev->data is less than our data
+    // 4. Insert this node by adjusting forward pointers
+    for (int i = 0; i < newLevel; i++) {
+        newNode->forward[i] = update[i]->forward[i];
+        update[i]->forward[i] = newNode;
+    }
+    return true;
+}
 
+bool slSearch(const SkipList *sl, const void *data)
+{
+    SkipListNode *current = sl->header;
+    // Start from the top level down
+    for (int i = sl->level - 1; i >= 0; i--) {
+        while (current->forward[i] &&
+               sl->cmp(current->forward[i]->data, data) < 0)
+        {
+            current = current->forward[i];
+        }
+    }
+    // Now move one step in level 0
+    current = current->forward[0];
+    // Check if we found the data
+    if (current && sl->cmp(current->data, data) == 0) {
+        return true;
+    }
+    return false;
+}
 
-		//when do we add a node?
-		
-		//when do we exit?
-		//when we find a match for our value, or when we are done building the tower
+bool slRemove(SkipList *sl, const void *data)
+{
+    SkipListNode *update[sl->maxLevel];
+    SkipListNode *current = sl->header;
 
+    // 1. Find nodes that must be updated
+    for (int i = sl->level - 1; i >= 0; i--) {
+        while (current->forward[i] &&
+               sl->cmp(current->forward[i]->data, data) < 0)
+        {
+            current = current->forward[i];
+        }
+        update[i] = current;
+    }
 
-		//is it possible that we can move left and down at the same time?
-		//when next->data is greater, then prev->data cannot be greater
-		//but when next is NULL, then prev-data can be greater
-		
-		//Rule of thumb, check right first, then left, then down, then add
-		
-		/* insert 2 
-		    NULL<-------4-->NULL
-			            |
-			NULL<--3<--[4]-->NULL
-		           |    |
-				   v    v
-	
-		*/
+    // 2. The candidate is the node right after update[0]
+    current = current->forward[0];
+    // Check if it actually holds 'data'
+    if (current && sl->cmp(current->data, data) == 0) {
+        // 3. Update forward pointers
+        for (int i = 0; i < sl->level; i++) {
+            if (update[i]->forward[i] != current) {
+                break;
+            }
+            update[i]->forward[i] = current->forward[i];
+        }
+        // Free node data if we have a freeFunc
+        if (sl->freeFunc) {
+            sl->freeFunc(current->data);
+        }
+        free(current->forward);
+        free(current);
 
-	}
-
-	return true;
+        // 4. Adjust skip list level if top levels are now empty
+        while (sl->level > 1 && sl->header->forward[sl->level - 1] == NULL) {
+            sl->level--;
+        }
+        return true;
+    }
+    return false;
 }
 
 
-
-bool slSearch(const SkipList *sl, const void *data){
-	return true;
-}
-
-bool slRemove(SkipList *sl, const void *data){
-	return true;
-}
-
-
-	/*
-		insert 5
-		head-->[NULL]
-		we insert the data into the skiplistnode and return true
-	
-	*/
-	/*
-		insert 6
-              NULL
-			   ^
-		       |
-		NULL<--5-->NULL
-		       |
-			   v
-		       NULL
-		we traverse right until NULL or until we see something greater
-		we see NULL. Now we want to go down until we see NULL. We see NULL
-		immediately so we know that we are at the bottom. Insert 6 tower 
-		
-	*/
-
-	/*
-		insert 4
-        head------>6-->
-			   ^   ^
-		       |   |
-		    <--5-->6-->
-		       |   |
-			   v   v
-		 Sometimes we need to traverse left in the same way we traverse right
-		 So if 6 overshoots when we are searching for 4, we move down the 6
-		 tower. We now need to traverse left until we see something less than 4
-		 or NULL (whichever comes first). In this case we see NULL, so we know we
-		 must move down, but wait! We are already at the base level because we see
-		 NULL. So that means we insert our 4 tower before 5 at the base level
-	
-	*/
-
-
-	/*
-		insert 8
-
-               ^
-			   |
-		head-->4---------->
-               ^
-		       |
-	           4------>6-->
-			   ^   ^   ^
-		       |   |   |
-		    <--4<--5-->6-->
-		       |   |   |
-			   v   v   v
-		 Here we want to insert 8. So we see 4 at the head, and know
-		 we must go right or down. The next pointer points to NULL, so
-		 we must go down one level. We move right and see 6, that's not
-		 far enough we must keep going until we reach something greater
-		 or equal to 8, or NULL, whichever comes first. In this case we hit
-		 NULL, so we go down once more. Here we test to see if we are at
-		 the bottom level, and we are. So we know we must traverse right.
-		 We see Null before we see anything greater than 8, so we place the
-		 8 tower there.
-	
-	*/
-
-
-	/*
-		insert 7
-
-               ^
-			   |
-		head-->4---------->
-               ^
-		       |
-	           4------>6-->
-			   ^   ^   ^
-		       |   |   |
-		    <--4<--5-->6-->8-->
-		       |   |   |   |
-			   v   v   v   v
-		 Here we want to insert 7. So we see 4 at the head, and know
-		 we must go right or down. The next pointer points to NULL, so
-		 we must go down one level. We move right and see 6, that's not
-		 far enough we must keep going until we reach something greater
-		 or equal to 8, or NULL, whichever comes first. In this case we hit
-		 NULL, so we go down once more. Here we test to see if we are at
-		 the bottom level, and we are. So we know we must traverse right.
-		 We see 8 before NULL, so we place the 7 tower right before 8.
-	
-	*/
