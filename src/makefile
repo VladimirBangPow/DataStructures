@@ -13,6 +13,7 @@ all:
 	    DynamicArray/dynamic_array.c DynamicArray/test_dynamic_array.c \
 	    CString/cstring.c CString/test_cstring.c \
 	    SkipList/skip_list.c SkipList/test_skip_list.c \
+	    HashTable/hash_table.c HashTable/test_hash_table.c \
 	    -o main \
 	    -lm   # <-- add this at the end to link the math library
 

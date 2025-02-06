@@ -7,22 +7,22 @@
 #include "DynamicArray/test_dynamic_array.h"
 #include "CString/test_cstring.h"
 #include "SkipList/test_skip_list.h"
+#include "HashTable/test_hash_table.h"
 
 int main(void) {
     testLinkedList();
     testStack();
-
     testDoubleLinkedList();
     testQueue();
-
     testDeque();
-
     testCircularList();
-
 	testDynamicArray();
-
 	testCString();
     testSkipList();
-    
+    testHashTable();
+
+
+
+	
     return 0;
 }
