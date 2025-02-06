@@ -8,6 +8,7 @@
 #include "CString/test_cstring.h"
 #include "SkipList/test_skip_list.h"
 #include "HashTable/test_hash_table.h"
+#include "BinaryTree/test_binary_tree.h"
 
 int main(void) {
     testLinkedList();
@@ -20,9 +21,10 @@ int main(void) {
 	testCString();
     testSkipList();
     testHashTable();
+    testBinaryTree();
 
 
 
-	
+
     return 0;
 }
