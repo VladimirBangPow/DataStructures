@@ -177,7 +177,10 @@ Below is a list of commonly used C string functions from the `<string.h>` librar
 
 ## Skip List
 
-![Skip List](diagrams/SkipList.png "Skip List")
+![Skip List 1](diagrams/SkipList1.png "Skip List 1")
+![Skip List 2](diagrams/SkipList2.png "Skip List 2")
+![Skip List 3](diagrams/SkipList3.png "Skip List 3")
+![Skip List 4](diagrams/SkipList4.png "Skip List 4")
 
 
 A layered, probabilistic data structure that allows O(log n) average insertion/search/deletion.
