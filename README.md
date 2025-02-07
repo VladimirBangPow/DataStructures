@@ -190,6 +190,8 @@ Conceptually built on top of a linked list with additional “express” links t
 
 ## Hash Table (a blend of linear and specialized structure)
 
+![Hash Table](diagrams/HashTable.png "HashTable")
+
 Stores key–value pairs for average O(1) lookup and insertion, but can degrade to O(n) in worst case.
 Common collision handling methods: chaining (linked lists) or open addressing (linear probing, quadratic probing, etc.).
 
