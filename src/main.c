@@ -9,6 +9,7 @@
 #include "SkipList/test_skip_list.h"
 #include "HashTable/test_hash_table.h"
 #include "BinaryTree/test_binary_tree.h"
+#include "BinarySearchTree/test_bst.h"
 
 int main(void) {
     testLinkedList();
@@ -22,6 +23,7 @@ int main(void) {
     testSkipList();
     testHashTable();
     testBinaryTree();
+    testBinarySearchTree();
 
 
 

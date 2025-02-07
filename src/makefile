@@ -15,6 +15,7 @@ all:
 	    SkipList/skip_list.c SkipList/test_skip_list.c \
 	    HashTable/hash_table.c HashTable/test_hash_table.c \
 		BinaryTree/binary_tree.c BinaryTree/test_binary_tree.c \
+		BinarySearchTree/bst.c BinarySearchTree/test_bst.c \
 	    -o main \
 	    -lm   # <-- add this at the end to link the math library
 
