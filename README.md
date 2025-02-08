@@ -205,6 +205,10 @@ Used for hierarchical data, expression parsing, etc.
 
 A binary tree enforcing ordering constraints: all keys in the left subtree < node’s key, and all keys in the right subtree > node’s key.
 Allows search, insertion, and deletion in O(h) time, where h is tree height.
+![BST1](diagrams/BinarySearchTree1.png "BST1")
+![BST2](diagrams/BinarySearchTree2.png "BST2")
+![BST3](diagrams/BinarySearchTree3.png "BST3")
+![BST4](diagrams/BinarySearchTree4.png "BST4")
 
 ## Balanced Trees
 
