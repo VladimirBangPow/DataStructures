@@ -213,11 +213,12 @@ Allows search, insertion, and deletion in O(h) time, where h is tree height.
 ## Balanced Trees
 
 Maintain balanced height for faster lookups (O(log n)). Examples:
-AVL Tree
-Red–Black Tree
-Splay Tree
-Treap
-B-Tree, B+ Tree (often used in databases and filesystems)
+### AVL Tree
+### Red–Black Tree
+### Splay Tree
+### Treap
+### B-Tree, 
+### B+ Tree (often used in databases and filesystems)
 
 ## Heap/Priority Queue
 
