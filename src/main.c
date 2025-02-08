@@ -10,6 +10,7 @@
 #include "HashTable/test_hash_table.h"
 #include "BinaryTree/test_binary_tree.h"
 #include "BinarySearchTree/test_bst.h"
+#include "AvlTree/test_avl.h"
 
 int main(void) {
     testLinkedList();
@@ -24,7 +25,7 @@ int main(void) {
     testHashTable();
     testBinaryTree();
     testBinarySearchTree();
-
+    testAvlTree();
 
 
 

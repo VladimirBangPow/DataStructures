@@ -4,36 +4,125 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>  /* For time(...) in testBSTStress */
 
 /* ----------------------------------------------------------------
- *                      INT TEST
+ *                HELPER FUNCTIONS (IN-ORDER TRAVERSALS)
+ * ---------------------------------------------------------------- */
+
+/* --------------- INT in-order helper --------------- */
+static void traverseInOrderInt(const BSTNode *node, const int *expected, size_t *pIndex) {
+    if (!node) return;
+    traverseInOrderInt(node->left, expected, pIndex);
+
+    int value = *(int *)node->data;
+    assert(value == expected[*pIndex] && "In-order integer sequence mismatch");
+    (*pIndex)++;
+
+    traverseInOrderInt(node->right, expected, pIndex);
+}
+
+static void checkInOrderInt(const BSTNode *root, const int *expected, size_t size) {
+    size_t index = 0;
+    traverseInOrderInt(root, expected, &index);
+    assert(index == size && "In-order traversal (int) count mismatch");
+}
+
+/* --------------- CHAR in-order helper --------------- */
+static void traverseInOrderChar(const BSTNode *node, const char *expected, size_t *pIndex) {
+    if (!node) return;
+    traverseInOrderChar(node->left, expected, pIndex);
+
+    char value = *(char *)node->data;
+    assert(value == expected[*pIndex] && "In-order char sequence mismatch");
+    (*pIndex)++;
+
+    traverseInOrderChar(node->right, expected, pIndex);
+}
+
+static void checkInOrderChar(const BSTNode *root, const char *expected, size_t size) {
+    size_t index = 0;
+    traverseInOrderChar(root, expected, &index);
+    assert(index == size && "In-order traversal (char) count mismatch");
+}
+
+/* --------------- STRING in-order helper --------------- */
+static void traverseInOrderStrings(const BSTNode *node, const char *expected[], size_t *pIndex) {
+    if (!node) return;
+    traverseInOrderStrings(node->left, expected, pIndex);
+
+    const char *value = *(const char **)node->data;
+    assert(strcmp(value, expected[*pIndex]) == 0 && "In-order string mismatch");
+    (*pIndex)++;
+
+    traverseInOrderStrings(node->right, expected, pIndex);
+}
+
+static void checkInOrderStrings(const BSTNode *root, const char *expected[], size_t size) {
+    size_t index = 0;
+    traverseInOrderStrings(root, expected, &index);
+    assert(index == size && "In-order traversal (string) count mismatch");
+}
+
+/* --------------- STRUCT (Person) in-order helper --------------- */
+typedef struct Person {
+    const char *name;
+    int age;
+} Person;
+
+static void traverseInOrderPersons(const BSTNode *node, const Person *expected, size_t *pIndex) {
+    if (!node) return;
+    traverseInOrderPersons(node->left, expected, pIndex);
+
+    const Person *p = (const Person *)node->data;
+    assert(p->age == expected[*pIndex].age && "In-order Person age mismatch");
+    assert(strcmp(p->name, expected[*pIndex].name) == 0 && "In-order Person name mismatch");
+    (*pIndex)++;
+
+    traverseInOrderPersons(node->right, expected, pIndex);
+}
+
+static void checkInOrderPersons(const BSTNode *root, const Person *expected, size_t size) {
+    size_t index = 0;
+    traverseInOrderPersons(root, expected, &index);
+    assert(index == size && "In-order traversal (struct) count mismatch");
+}
+
+/* ----------------------------------------------------------------
+ *                     COMPARISON FUNCTIONS
  * ---------------------------------------------------------------- */
 static int compareInts(const void *a, const void *b) {
-    /* Compare the integer values pointed to by a and b */
     int intA = *(const int *)a;
     int intB = *(const int *)b;
     return (intA - intB);
 }
 
-static void checkInOrderInt(const BSTNode *root, const int *expected, size_t size) {
-    /* We’ll do a quick in-order traversal and compare each visited value
-       against 'expected' in sequence. */
-    static size_t index = 0;
-    index = 0;  // reset each time we call the function
-
-    void traverse(const BSTNode *node) {
-        if (!node) return;
-        traverse(node->left);
-        int value = *(int *)node->data;
-        assert(value == expected[index] && "In-order integer sequence mismatch");
-        index++;
-        traverse(node->right);
-    }
-
-    traverse(root);
-    assert(index == size && "In-order traversal (int) count mismatch");
+static int compareChars(const void *a, const void *b) {
+    char charA = *(const char *)a;
+    char charB = *(const char *)b;
+    return (int)charA - (int)charB;
 }
 
+static int compareStrings(const void *a, const void *b) {
+    const char *strA = *(const char **)a;
+    const char *strB = *(const char **)b;
+    return strcmp(strA, strB);
+}
+
+/* Compare by age, then by name if ages are the same */
+static int comparePersons(const void *a, const void *b) {
+    const Person *pA = (const Person *)a;
+    const Person *pB = (const Person *)b;
+
+    if (pA->age < pB->age) return -1;
+    if (pA->age > pB->age) return 1;
+    /* if same age, compare names */
+    return strcmp(pA->name, pB->name);
+}
+
+/* ----------------------------------------------------------------
+ *                      INT TEST
+ * ---------------------------------------------------------------- */
 static void testBSTWithInts(void) {
     printf("  [INT] Testing BST with integers...\n");
 
@@ -92,30 +181,6 @@ static void testBSTWithInts(void) {
 /* ----------------------------------------------------------------
  *                      CHAR TEST
  * ---------------------------------------------------------------- */
-static int compareChars(const void *a, const void *b) {
-    /* Compare the char values pointed to by a and b */
-    char charA = *(const char *)a;
-    char charB = *(const char *)b;
-    return (int)charA - (int)charB;
-}
-
-static void checkInOrderChar(const BSTNode *root, const char *expected, size_t size) {
-    static size_t index = 0;
-    index = 0;
-
-    void traverse(const BSTNode *node) {
-        if (!node) return;
-        traverse(node->left);
-        char value = *(char *)node->data;
-        assert(value == expected[index] && "In-order char sequence mismatch");
-        index++;
-        traverse(node->right);
-    }
-
-    traverse(root);
-    assert(index == size && "In-order traversal (char) count mismatch");
-}
-
 static void testBSTWithChars(void) {
     printf("  [CHAR] Testing BST with characters...\n");
 
@@ -134,7 +199,7 @@ static void testBSTWithChars(void) {
     BSTNode *found = searchBST(root, &searchVal, compareChars);
     assert(found && *(char *)found->data == 'z');
 
-    /* In-order should be: a g k m o t z (alphabetical order) */
+    /* In-order should be: a g k m o t z */
     {
         const char expected[] = {'a', 'g', 'k', 'm', 'o', 't', 'z'};
         checkInOrderChar(root, expected, sizeof(expected)/sizeof(expected[0]));
@@ -153,32 +218,6 @@ static void testBSTWithChars(void) {
 /* ----------------------------------------------------------------
  *                      STRING TEST
  * ---------------------------------------------------------------- */
-static int compareStrings(const void *a, const void *b) {
-    /* a and b are `char*` pointers, so cast and use strcmp */
-    const char *strA = *(const char **)a;  /* we store pointer-to-string in the tree */
-    const char *strB = *(const char **)b;
-    return strcmp(strA, strB);
-}
-
-static void checkInOrderStrings(const BSTNode *root, const char *expected[], size_t size) {
-    static size_t index = 0;
-    index = 0;
-
-    void traverse(const BSTNode *node) {
-        if (!node) return;
-        traverse(node->left);
-
-        const char *value = *(const char **)node->data;
-        assert(strcmp(value, expected[index]) == 0 && "In-order string mismatch");
-        index++;
-
-        traverse(node->right);
-    }
-
-    traverse(root);
-    assert(index == size && "In-order traversal (string) count mismatch");
-}
-
 static void testBSTWithStrings(void) {
     printf("  [STRING] Testing BST with strings...\n");
 
@@ -188,12 +227,12 @@ static void testBSTWithStrings(void) {
     static const char *strings[] = {"delta", "alpha", "echo", "charlie", "bravo"};
     size_t n = sizeof(strings) / sizeof(strings[0]);
 
-    /* Insert the strings (note: we pass &strings[i] because the tree holds void*) */
+    /* Insert the strings */
     for (size_t i = 0; i < n; i++) {
         root = insertBSTNode(root, &strings[i], compareStrings);
     }
 
-    /* In-order should be: "alpha", "bravo", "charlie", "delta", "echo" */
+    /* In-order should be: alpha, bravo, charlie, delta, echo */
     {
         static const char *expected[] = {"alpha", "bravo", "charlie", "delta", "echo"};
         checkInOrderStrings(root, expected, 5);
@@ -215,46 +254,8 @@ static void testBSTWithStrings(void) {
 }
 
 /* ----------------------------------------------------------------
- *                      STRUCT TEST
+ *                      STRUCT TEST (Person)
  * ---------------------------------------------------------------- */
-/* Example struct */
-typedef struct Person {
-    const char *name;
-    int age;
-} Person;
-
-/* Compare by age, then by name if ages are the same */
-static int comparePersons(const void *a, const void *b) {
-    const Person *pA = (const Person *)a;
-    const Person *pB = (const Person *)b;
-
-    if (pA->age < pB->age) return -1;
-    if (pA->age > pB->age) return 1;
-    /* if same age, compare names */
-    return strcmp(pA->name, pB->name);
-}
-
-/* We can do a quick in-order check by verifying ascending ages, for example. */
-static void checkInOrderPersons(const BSTNode *root, const Person *expected, size_t size) {
-    static size_t index = 0;
-    index = 0;
-
-    void traverse(const BSTNode *node) {
-        if (!node) return;
-        traverse(node->left);
-
-        const Person *p = (const Person *)node->data;
-        assert(p->age == expected[index].age && "In-order Person age mismatch");
-        assert(strcmp(p->name, expected[index].name) == 0 && "In-order Person name mismatch");
-        index++;
-
-        traverse(node->right);
-    }
-
-    traverse(root);
-    assert(index == size && "In-order traversal (struct) count mismatch");
-}
-
 static void testBSTWithStructs(void) {
     printf("  [STRUCT] Testing BST with Person struct...\n");
 
@@ -262,10 +263,10 @@ static void testBSTWithStructs(void) {
 
     /* For simplicity, store these statically. */
     static Person people[] = {
-        {"Alice", 30},
-        {"Bob",   25},
+        {"Alice",   30},
+        {"Bob",     25},
         {"Charlie", 35},
-        {"Dave",    25},   /* same age as Bob, but name > Bob */
+        {"Dave",    25},  /* same age as Bob, but name > Bob */
         {"Eve",     40}
     };
     size_t n = sizeof(people) / sizeof(people[0]);
@@ -279,11 +280,11 @@ static void testBSTWithStructs(void) {
        1) Bob (25), 2) Dave (25), 3) Alice (30), 4) Charlie (35), 5) Eve (40)
     */
     static Person expected[] = {
-        {"Bob", 25},
-        {"Dave", 25},
-        {"Alice", 30},
+        {"Bob",     25},
+        {"Dave",    25},
+        {"Alice",   30},
         {"Charlie", 35},
-        {"Eve", 40}
+        {"Eve",     40}
     };
     checkInOrderPersons(root, expected, n);
 
@@ -303,7 +304,8 @@ static void testBSTWithStructs(void) {
 }
 
 /* 
- * Optional: Simple function to verify the BST is still in sorted order via in-order traversal.
+ * Optional: Simple function to verify the BST is still in sorted order
+ *           via in-order traversal for int data.
  * We'll just confirm that each visited node is >= the previously visited value.
  */
 static void verifySortedOrder(const BSTNode *root) {
@@ -312,7 +314,7 @@ static void verifySortedOrder(const BSTNode *root) {
 
     if (firstCall) {
         // Reset static variables each time we start a new check
-        lastVal = -2147483648; 
+        lastVal = -2147483648;
         firstCall = 0;
     }
 
@@ -336,8 +338,6 @@ static void verifySortedOrder(const BSTNode *root) {
 static void testBSTStress(void) {
     printf("  [STRESS] Running large-scale/stress test on BST with int data...\n");
 
-    /* Choose how many random values to insert. 
-       Adjust as needed for your performance requirements. */
     const int NUM_VALUES = 20000;
 
     /* Allocate an array to store random integers. */
@@ -347,13 +347,12 @@ static void testBSTStress(void) {
         return;
     }
 
-    /* Seed the random number generator. 
-       You could also take a time-based or user-provided seed. */
+    /* Seed the random number generator. */
     srand((unsigned int)time(NULL));
 
-    /* Generate random integers. */
+    /* Generate random integers in [0..NUM_VALUES*10). */
     for (int i = 0; i < NUM_VALUES; i++) {
-        values[i] = rand() % (NUM_VALUES * 10);  // Range: [0..NUM_VALUES*10)
+        values[i] = rand() % (NUM_VALUES * 10);
     }
 
     /* Create an empty BST. */
@@ -365,21 +364,18 @@ static void testBSTStress(void) {
     }
 
     /*
-     * 2) Optionally, do some random searches.
-     *    For example, pick 1000 random elements from 'values' to search for.
+     * 2) Do some random searches.
      */
     for (int i = 0; i < 1000; i++) {
         int idx = rand() % NUM_VALUES;
         int searchVal = values[idx];
-        BSTNode *found = searchBST(root, &searchVal, compareInts);
-        // Not asserting found/unfound here because duplicates or partial coverage
-        // might exist. But you could do additional checks if needed.
-        (void)found; // just to suppress unused variable warning
+        (void)searchBST(root, &searchVal, compareInts); 
+        // Not asserting found/unfound here because duplicates 
+        // or partial coverage might exist.
     }
 
     /*
-     * 3) Optionally, delete some random subset of items.
-     *    E.g., delete 25% of the inserted items.
+     * 3) Delete some random subset of items (e.g., 25%).
      */
     int deleteCount = NUM_VALUES / 4;
     for (int i = 0; i < deleteCount; i++) {
@@ -389,15 +385,10 @@ static void testBSTStress(void) {
     }
 
     /*
-     * 4) Verify the BST is still in sorted order with an in-order traversal.
-     *    If you want to ensure the exact contents, you'd need to track
-     *    which items are actually still in the tree after deletions.
+     * 4) Verify the BST is still in non-decreasing order.
      */
     verifySortedOrder(root);
-    // reset the static check variables (in case you want to call again)
-    // easiest way is to re-init them in the function, or do a small trick:
-    // Call verifySortedOrder(NULL) once more.
-    verifySortedOrder(NULL);
+    verifySortedOrder(NULL);  // Reset the static variables.
 
     /* 5) Free the BST. */
     freeBST(root);
@@ -419,6 +410,7 @@ void testBinarySearchTree(void) {
     testBSTWithChars();
     testBSTWithStrings();
     testBSTWithStructs();
-	testBSTStress();
+    testBSTStress();
+
     printf("\nAll BST tests for multiple data types passed!\n");
 }
