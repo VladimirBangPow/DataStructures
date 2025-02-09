@@ -214,6 +214,14 @@ Allows search, insertion, and deletion in O(h) time, where h is tree height.
 
 Maintain balanced height for faster lookups (O(log n)). Examples:
 ### AVL Tree
+![AVL1](diagrams/AVLTree1.png "AVL1")
+![AVL2](diagrams/AVLTree2.png "AVL2")
+![AVL3](diagrams/AVLTree3.png "AVL3")
+![AVL4](diagrams/AVLTree4.png "AVL4")
+![AVL5](diagrams/AVLTree5.png "AVL5")
+![AVL6](diagrams/AVLTree6.png "AVL6")
+![AVL7](diagrams/AVLTree7.png "AVL7")
+
 ### Red–Black Tree
 ### Splay Tree
 ### Treap
