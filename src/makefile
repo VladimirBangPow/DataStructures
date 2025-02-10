@@ -17,6 +17,7 @@ all:
 		BinaryTree/binary_tree.c BinaryTree/test_binary_tree.c \
 		BinarySearchTree/bst.c BinarySearchTree/test_bst.c \
 		AvlTree/avl_tree.c AvlTree/test_avl.c \
+		RedBlackTree/red_black_tree.c RedBlackTree/test_red_black_tree.c \
 	    -o main \
 
 clean:

@@ -11,6 +11,7 @@
 #include "BinaryTree/test_binary_tree.h"
 #include "BinarySearchTree/test_bst.h"
 #include "AvlTree/test_avl.h"
+#include "RedBlackTree/test_red_black_tree.h"
 
 int main(void) {
     testLinkedList();
@@ -26,7 +27,7 @@ int main(void) {
     testBinaryTree();
     testBinarySearchTree();
     testAvlTree();
-
+	testRedBlackTree();
 
 
     return 0;
