@@ -225,12 +225,15 @@ Maintain balanced height for faster lookups (O(log n)). Examples:
 ![AVL9](diagrams/AVLTree9.png "AVL9")
 
 ### Red–Black Tree
-#### Four Primary Rules:
+#### 5 Primary Rules:
 
 1. A node is either red or black
 2. The root and leaves are always black
 3. If a node is red then its children are always black
 4. All paths from a node to its nill descendants contain the same number of black nodes.
+5. The longest path is no longer than twice the length of the shortest path. (root to nil)
+
+
 https://www.youtube.com/watch?v=qvZGUFHWChY
 
 ![RBT1](diagrams/RBT1.png "RBT1")
