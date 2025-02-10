@@ -185,6 +185,112 @@ static void test_stress_int(void) {
     printf("[test_stress_int] Passed (N = %d).\n", N);
 }
 
+/**
+ * Recursively verify that the AVL tree invariants hold for the given node.
+ * Returns the height of the node as computed by traversing its children.
+ *
+ * Checks:
+ *   - node->height == 1 + max(height_of_left, height_of_right)
+ *   - |height_of_left - height_of_right| <= 1
+ */
+static int verify_avl_invariants(AvlNode *node)
+{
+    if (node == NULL) {
+        return -1; /* height of an empty tree */
+    }
+
+    int leftHeight  = verify_avl_invariants(node->left);
+    int rightHeight = verify_avl_invariants(node->right);
+
+    // Check that node->height matches the computed height
+    int expectedHeight = 1 + (leftHeight > rightHeight ? leftHeight : rightHeight);
+    assert(node->height == expectedHeight);
+
+    // Check that the balance factor is within [-1, 1]
+    int balanceFactor = leftHeight - rightHeight;
+    assert(balanceFactor >= -1 && balanceFactor <= 1);
+
+    return node->height;
+}
+
+/**
+ * Convenience function that starts the verification from the root.
+ */
+static void verify_avl_tree(AvlTree *tree)
+{
+    verify_avl_invariants(tree->root);
+}
+
+static void test_invariants_stress(void)
+{
+    printf("[test_invariants_stress] Running...\n");
+
+    AvlTree *tree = avl_create(compare_int);
+
+    const int N_OPERATIONS = 10000;
+    const int MAX_VALUE = 10000; // range of integer values
+    srand((unsigned int)time(NULL));
+
+    // We’ll keep track of which values are currently “in the tree”
+    // so that we only remove what we’ve inserted.
+    // For speed, we can store them in a dynamic array or a hash set.
+    // But here, we'll just store them in an array and track the count.
+    int *insertedValues = malloc(sizeof(int) * N_OPERATIONS);
+    int  insertedCount  = 0;
+
+    for (int i = 0; i < N_OPERATIONS; i++) {
+        int op = rand() % 2; // 0 for insert, 1 for remove
+
+        if (op == 0) {
+            // INSERT operation
+            // Create a random number
+            int value = rand() % MAX_VALUE;
+            // Insert it into the AVL tree
+            int *heap_val = malloc(sizeof(int));
+            *heap_val = value;
+            avl_insert(tree, heap_val);
+
+            // Record it in insertedValues
+            insertedValues[insertedCount++] = value;
+        } else {
+            // REMOVE operation
+            if (insertedCount > 0) {
+                // Pick one from insertedValues at random
+                int idx = rand() % insertedCount;
+                int valueToRemove = insertedValues[idx];
+
+                // Remove it from the tree
+                avl_remove(tree, &valueToRemove, free_int);
+
+                // Remove that value from insertedValues by
+                // swapping with the last one, then decrement count
+                insertedValues[idx] = insertedValues[insertedCount - 1];
+                insertedCount--;
+            } 
+            // else if insertedCount == 0, there's nothing to remove,
+            // so we skip the remove.
+        }
+
+        // Check invariants AFTER every operation.
+        verify_avl_tree(tree);
+    }
+
+    // Cleanup
+    // Remove any remaining values in the tree
+    for (int i = 0; i < insertedCount; i++) {
+        avl_remove(tree, &insertedValues[i], free_int);
+    }
+    free(insertedValues);
+
+    // Final check
+    verify_avl_tree(tree);
+
+    avl_destroy(tree, NULL);
+
+    printf("[test_invariants_stress] Passed.\n");
+}
+
+
 /* 
  * Run all the tests 
  */
@@ -195,5 +301,7 @@ void testAvlTree(void) {
     test_doubles_basic();
     test_strings_basic();
     test_stress_int();
+    test_invariants_stress();
+
     printf("All AVL Tree tests passed.\n");
 }

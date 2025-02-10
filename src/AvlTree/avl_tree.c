@@ -44,6 +44,12 @@ static AvlNode *rotate_right(AvlNode *y) {
     y->left = T2;
 
     /* Update heights */
+	/*
+		First, you update y—which is now a child of x. 
+		You want y’s subtrees to have correct heights before updating x, 
+		because when update_height(x) runs, it relies on the correct height of y.
+		Then you update x, which uses the (now correctly updated) heights of its children to compute its own
+	*/
     update_height(y);
     update_height(x);
 
@@ -176,10 +182,11 @@ static AvlNode *avl_remove_node(AvlNode *node, void *data,
         }
     }
 
-    /* If the tree had only one node, just return */
-    if (node == NULL) {
-        return NULL;
-    }
+    /* If the tree had only one node, just return  
+	(THIS SEEMS REDUNDANT, AT NO POINT IS NODE BEING REASIGNED DIRECTLY REMOVING FOR NOW)*/
+    // if (node == NULL) {
+    //     return NULL;
+    // }
 
     /* Update height of the current node */
     update_height(node);
