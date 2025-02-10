@@ -221,6 +221,8 @@ Maintain balanced height for faster lookups (O(log n)). Examples:
 ![AVL5](diagrams/AVLTree5.png "AVL5")
 ![AVL6](diagrams/AVLTree6.png "AVL6")
 ![AVL7](diagrams/AVLTree7.png "AVL7")
+![AVL8](diagrams/AVLTree8.png "AVL8")
+![AVL9](diagrams/AVLTree9.png "AVL9")
 
 ### Red–Black Tree
 ### Splay Tree
