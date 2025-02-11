@@ -19,6 +19,7 @@ all:
 		AvlTree/avl_tree.c AvlTree/test_avl.c \
 		RedBlackTree/red_black_tree.c RedBlackTree/test_red_black_tree.c \
 	    -o main \
+		-lm
 
 clean:
 	rm -f main

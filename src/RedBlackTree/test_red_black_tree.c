@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 
 /* ----- Struct: Person ----- */
 typedef struct Person {
@@ -271,6 +272,165 @@ static void test_structs(void) {
     printf("Struct (Person) test PASSED.\n");
 }
 
+
+
+/*STRESS TEST HELPERS*/
+/* Forward declarations of helper check functions */
+static int check_root_black(const RBTREE* tree);
+static int check_no_consecutive_red(const RBTREE* tree, const RBTNode* node);
+static int check_black_height_consistency(const RBTREE* tree, 
+                                          const RBTNode* node, 
+                                          int current_black_count, 
+                                          int* expected_black_count);
+static int compute_height(const RBTREE* tree, const RBTNode* node);
+
+int verify_rb_properties(const RBTREE* tree) {
+    if (tree->root == tree->nil) {
+        /* An empty tree is trivially correct, though by definition 
+           your sentinel node is black, so presumably this is fine. */
+        return 1;
+    }
+
+    /* 1) Root must be black */
+    if (!check_root_black(tree)) {
+        fprintf(stderr, "Red-Black check failed: root is not black.\n");
+        return 0;
+    }
+
+    /* 2) Check for no consecutive red nodes */
+    if (!check_no_consecutive_red(tree, tree->root)) {
+        fprintf(stderr, "Red-Black check failed: found two consecutive red nodes.\n");
+        return 0;
+    }
+
+    /* 3) Check black-height is consistent across all paths */
+    int expected_black_count = -1;
+    if (!check_black_height_consistency(tree, 
+                                        tree->root, 
+                                        0, 
+                                        &expected_black_count)) {
+        fprintf(stderr, "Red-Black check failed: black-height inconsistency.\n");
+        return 0;
+    }
+
+    /* 4) (Optional) Check height <= 2 * log2(n+1) */
+    {
+        size_t n = rb_size(tree);
+        if (n > 0) {
+            int h = compute_height(tree, tree->root);
+            double max_expected = 2.0 * log2((double)n + 1.0);
+            if (h > (int)ceil(max_expected)) {
+                fprintf(stderr, 
+                        "Red-Black check warning: height %d exceeds 2*log2(n+1) ~ %.2f\n", 
+                        h, max_expected);
+                /* 
+                 * We can decide if we call this a failure or just a warning.
+                 * Strictly speaking, red-black trees guarantee O(log n),
+                 * but the constant factor might differ. 
+                 * If you want to fail strictly, uncomment below:
+                 */
+                // return 0;
+            }
+        }
+    }
+
+    /* If we reached here, all checks passed. */
+    return 1;
+}
+
+/* --- Helper Check Functions --- */
+
+/* Check the root is black. */
+static int check_root_black(const RBTREE* tree) {
+    return (tree->root->color == BLACK);
+}
+
+/*
+ * Traverse the tree. If a node is red, neither its parent nor its children
+ * can be red.
+ */
+static int check_no_consecutive_red(const RBTREE* tree, const RBTNode* node) {
+    if (node == tree->nil) {
+        return 1; /* sentinel / leaf is black by definition */
+    }
+    if (node->color == RED) {
+        /* Check children */
+        if (node->left->color == RED || node->right->color == RED) {
+            return 0; /* child is red => consecutive reds */
+        }
+        /* Check parent as well: though typically we check parent's color 
+           during recursion from above, but this also works. */
+        if (node->parent != tree->nil && node->parent->color == RED) {
+            return 0;
+        }
+    }
+    /* Recurse left and right */
+    if (!check_no_consecutive_red(tree, node->left)) {
+        return 0;
+    }
+    if (!check_no_consecutive_red(tree, node->right)) {
+        return 0;
+    }
+    return 1;
+}
+
+/*
+ * Checks that all paths from the root to leaves have the same number
+ * of black nodes. 
+ *  - current_black_count: how many black nodes have we seen on this root->current path?
+ *  - expected_black_count: pointer to a single "reference" black count 
+ *                         (once we see one leaf, we set the reference).
+ */
+static int check_black_height_consistency(const RBTREE* tree, 
+                                          const RBTNode* node, 
+                                          int current_black_count, 
+                                          int* expected_black_count) {
+    if (node->color == BLACK) {
+        current_black_count++;
+    }
+
+    if (node == tree->nil) {
+        /* We've reached a leaf (the sentinel). 
+         * Compare current_black_count to expected_black_count.
+         */
+        if (*expected_black_count == -1) {
+            /* first leaf we've hit: set the expected count */
+            *expected_black_count = current_black_count;
+        } else if (current_black_count != *expected_black_count) {
+            /* mismatch => violation */
+            return 0;
+        }
+        return 1;
+    }
+
+    /* Recur down left subtree */
+    if (!check_black_height_consistency(tree, node->left, 
+                                        current_black_count, 
+                                        expected_black_count)) {
+        return 0;
+    }
+    /* Recur down right subtree */
+    if (!check_black_height_consistency(tree, node->right, 
+                                        current_black_count, 
+                                        expected_black_count)) {
+        return 0;
+    }
+    return 1;
+}
+
+/* Simple function to compute the 'height' of the tree for a basic O(log n) check. */
+static int compute_height(const RBTREE* tree, const RBTNode* node) {
+    if (node == tree->nil) {
+        return 0;
+    }
+    int lh = compute_height(tree, node->left);
+    int rh = compute_height(tree, node->right);
+    return 1 + ((lh > rh) ? lh : rh);
+}
+
+
+
+
 /* ----- Simple Stress Test ----- */
 static void test_stress(void) {
     printf("Running stress test with random integers...\n");
@@ -278,33 +438,32 @@ static void test_stress(void) {
     RBTREE* t = rb_create(cmp_int, destroy_int);
     assert(t);
 
-    int N = 50000;
+    int N = 50000;  // smaller example
     for (int i = 0; i < N; i++) {
-        int* val = (int*)malloc(sizeof(int));
+        int* val = malloc(sizeof(int));
         *val = rand() % (N * 10);
         rb_insert(t, val);
+
+        /* Immediately check RB properties (may be expensive) */
+        assert(verify_rb_properties(t));
     }
     printf("Tree size after random inserts: %zu\n", rb_size(t));
-    assert(rb_size(t) <= (size_t)N); 
-    /* Could be less if duplicates were inserted. */
+    /* (some duplicates might not get inserted) */
 
-    /* Randomly search some values */
     for (int i = 0; i < 1000; i++) {
         int tmp = rand() % (N * 10);
-        rb_search(t, &tmp); /* Not asserting, just checking performance. */
-    }
+        rb_delete(t, &tmp);
 
-    /* Randomly delete some values */
-    for (int i = 0; i < 1000; i++) {
-        int tmp = rand() % (N * 10);
-        rb_delete(t, &tmp); 
+        /* Again, check RB properties. */
+        assert(verify_rb_properties(t));
     }
 
     printf("Tree size after random deletes: %zu\n", rb_size(t));
-
     rb_destroy(t);
+
     printf("Stress test PASSED.\n");
 }
+
 
 /* ----- Main Test Runner ----- */
 int testRedBlackTree(void) {

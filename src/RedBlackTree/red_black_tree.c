@@ -4,25 +4,25 @@
 #include <string.h>
 
 /* Define our colors */
-typedef enum { RED, BLACK } RBColor;
+// typedef enum { RED, BLACK } RBColor;
 
-/* Forward declaration of our node structure */
-typedef struct RBTNode {
-    void* data;
-    RBColor color;
-    struct RBTNode* left;
-    struct RBTNode* right;
-    struct RBTNode* parent;
-} RBTNode;
+// /* Forward declaration of our node structure */
+// typedef struct RBTNode {
+//     void* data;
+//     RBColor color;
+//     struct RBTNode* left;
+//     struct RBTNode* right;
+//     struct RBTNode* parent;
+// } RBTNode;
 
 /* The RBTREE structure */
-struct RBTREE {
-    RBTNode* root;
-    RBTNode* nil;  /* Sentinel node (all leaves point to this) */
-    int (*cmp)(const void*, const void*);
-    void (*destroy)(void*);
-    size_t size;
-};
+// struct RBTREE {
+//     RBTNode* root;
+//     RBTNode* nil;  /* Sentinel node (all leaves point to this) */
+//     int (*cmp)(const void*, const void*);
+//     void (*destroy)(void*);
+//     size_t size;
+// };
 
 /* --- Helper function prototypes --- */
 static RBTNode* create_node(RBTREE* tree, void* data);
