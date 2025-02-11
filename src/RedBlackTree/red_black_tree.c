@@ -3,26 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Define our colors */
-// typedef enum { RED, BLACK } RBColor;
-
-// /* Forward declaration of our node structure */
-// typedef struct RBTNode {
-//     void* data;
-//     RBColor color;
-//     struct RBTNode* left;
-//     struct RBTNode* right;
-//     struct RBTNode* parent;
-// } RBTNode;
-
-/* The RBTREE structure */
-// struct RBTREE {
-//     RBTNode* root;
-//     RBTNode* nil;  /* Sentinel node (all leaves point to this) */
-//     int (*cmp)(const void*, const void*);
-//     void (*destroy)(void*);
-//     size_t size;
-// };
 
 /* --- Helper function prototypes --- */
 static RBTNode* create_node(RBTREE* tree, void* data);
@@ -257,13 +237,13 @@ static void insert_fixup(RBTREE* tree, RBTNode* z) {
         if (z->parent == z->parent->parent->left) {
             RBTNode* y = z->parent->parent->right; /* uncle */
             if (y->color == RED) {
-                /* Case 1: uncle is red */
+                /* Case 1: uncle is red (We color flip)*/
                 z->parent->color = BLACK;
                 y->color = BLACK;
                 z->parent->parent->color = RED;
                 z = z->parent->parent;
             } else {
-                /* Uncle is black */
+                /* Uncle is black  (We Rotate)*/
                 if (z == z->parent->right) {
                     /* Case 2: rotate left */
                     z = z->parent;
@@ -278,11 +258,13 @@ static void insert_fixup(RBTREE* tree, RBTNode* z) {
             /* symmetric case */
             RBTNode* y = z->parent->parent->left; /* uncle */
             if (y->color == RED) {
+				/* Uncle is red (We color flip)*/
                 z->parent->color = BLACK;
                 y->color = BLACK;
                 z->parent->parent->color = RED;
                 z = z->parent->parent;
             } else {
+				/* Uncle is black (We rotate)*/
                 if (z == z->parent->left) {
                     z = z->parent;
                     right_rotate(tree, z);
