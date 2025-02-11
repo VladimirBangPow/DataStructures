@@ -245,6 +245,15 @@ Maintain balanced height for faster lookups (O(log n)). Examples:
 
 https://www.youtube.com/watch?v=nMExd4DthdA&list=PLOXdJ6q8iu4MneI9gySCHiyzAQcveqkIO
 
+![RBT1](diagrams/RBT1.png "RBT1")
+![RBT2](diagrams/RBT2.png "RBT2")
+![RBT3](diagrams/RBT3.png "RBT3")
+![RBT4](diagrams/RBT4.png "RBT4")
+![RBT5](diagrams/RBT5.png "RBT5")
+![RBT6](diagrams/RBT6.png "RBT6")
+![RBT7](diagrams/RBT7.png "RBT7")
+![RBT8](diagrams/RBT8.png "RBT8")
+![RBT9](diagrams/RBT9.png "RBT9")
 
 
 ### Splay Tree
