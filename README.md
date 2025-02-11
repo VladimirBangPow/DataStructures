@@ -254,7 +254,9 @@ https://www.youtube.com/watch?v=nMExd4DthdA&list=PLOXdJ6q8iu4MneI9gySCHiyzAQcveq
 ![RBT7](diagrams/RBT_7.png "RBT7")
 ![RBT8](diagrams/RBT_8.png "RBT8")
 ![RBT9](diagrams/RBT_9.png "RBT9")
-
+![RBT10](diagrams/RBT10.png "RBT10")
+![RBT11](diagrams/RBT11.png "RBT11")
+![RBT12](diagrams/RBT12.png "RBT12")
 
 ### Splay Tree
 ### Treap
