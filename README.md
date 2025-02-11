@@ -231,7 +231,7 @@ Maintain balanced height for faster lookups (O(log n)). Examples:
 2. The root and leaves are always black
 3. If a node is red then its children are always black
 4. All paths from a node to its nill descendants contain the same number of black nodes.
-5. The longest path is no longer than twice the length of the shortest path. (root to nil)
+5. This is less of a rule and more of a side effect. The longest path is no longer than twice the length of the shortest path. (root to nil)
 
 
 https://www.youtube.com/watch?v=qvZGUFHWChY
