@@ -228,13 +228,22 @@ Maintain balanced height for faster lookups (O(log n)). Examples:
 #### 5 Primary Rules:
 
 1. A node is either red or black
-2. The root and leaves are always black
-3. If a node is red then its children are always black
-4. All paths from a node to its nill descendants contain the same number of black nodes.
-5. This is less of a rule and more of a side effect. The longest path is no longer than twice the length of the shortest path. (root to nil)
+2. Root is always black
+3. New insertions are always red (and then are recolored depending on the circumstances)
+4. Every path from root to leaf has the same number of black nodes.
+5. No path can have two consecutive red nodes
+6. Nulls are black
+#### Rebalancing:
+1. If we have a black aunt, we rotate (BAR). After a rotation the three nodes we are working on end up as 
+	black
+ 	/   \
+      red   red
+2. If we have a red aunt, we color flip. After a color flip the three nodes we are working on end up as
+	Red
+       /   \
+    black  black
 
-
-https://www.youtube.com/watch?v=qvZGUFHWChY
+https://www.youtube.com/watch?v=nMExd4DthdA&list=PLOXdJ6q8iu4MneI9gySCHiyzAQcveqkIO
 
 ![RBT1](diagrams/RBT1.png "RBT1")
 ![RBT2](diagrams/RBT2.png "RBT2")
