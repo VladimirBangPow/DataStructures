@@ -291,6 +291,13 @@ https://www.youtube.com/watch?v=nMExd4DthdA&list=PLOXdJ6q8iu4MneI9gySCHiyzAQcveq
 ![RBT12](diagrams/RBT12.png "RBT12")
 
 ### Splay Tree
+
+#### Three different types of rotations for splay trees:
+
+![Zig](diagrams/Zig.png "Zig")
+![ZigZig](diagrams/ZigZig.png "ZigZig")
+![ZigZag](diagrams/ZigZag.png "ZigZag")
+
 ### Treap
 ### B-Tree, 
 ### B+ Tree (often used in databases and filesystems)
