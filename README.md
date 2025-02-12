@@ -292,8 +292,10 @@ https://www.youtube.com/watch?v=nMExd4DthdA&list=PLOXdJ6q8iu4MneI9gySCHiyzAQcveq
 
 ### Splay Tree
 
-#### Three different types of rotations for splay trees:
+#### Primitive Rotations
+![SplayRotations](diagrams/SplayRotations.png "SplayRotations")
 
+#### Three different types of rotations for splay trees:
 ![Zig](diagrams/Zig.png "Zig")
 ![ZigZig](diagrams/ZigZig1.png "ZigZig")
 ![ZigZag](diagrams/ZigZag1.png "ZigZag")
