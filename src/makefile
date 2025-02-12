@@ -18,6 +18,7 @@ all:
 		BinarySearchTree/bst.c BinarySearchTree/test_bst.c \
 		AvlTree/avl_tree.c AvlTree/test_avl.c \
 		RedBlackTree/red_black_tree.c RedBlackTree/test_red_black_tree.c \
+		SplayTree/splay_tree.c SplayTree/test_splay_tree.c \
 	    -o main \
 		-lm
 
