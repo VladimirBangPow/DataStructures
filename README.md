@@ -291,7 +291,8 @@ https://www.youtube.com/watch?v=nMExd4DthdA&list=PLOXdJ6q8iu4MneI9gySCHiyzAQcveq
 ![RBT12](diagrams/RBT12.png "RBT12")
 
 ### Splay Tree
-
+#### The 'key' to understand 'splaying'
+Even if a search for a key fails (the key doesn't exist), splaying brins the node closest to that key to the root. This is beneficial if future searches are near that same key or if you end up inserting that key next (the place it needs to ggo is now near the root). Similarlyy, after you insert a node or delete a node, you splay so that frequent or recent acesses stay near the top.
 #### Primitive Rotations
 ![SplayRotations](diagrams/SplayRotations.png "SplayRotations")
 
