@@ -296,7 +296,15 @@ Even if a search for a key fails (the key doesn't exist), splaying brins the nod
 #### Primitive Rotations
 ![SplayRotations](diagrams/SplayRotations.png "SplayRotations")
 
-#### Three different types of rotations for splay trees:
+#### 6 differrent cases:
+1. Rotate Left
+2. Rotate Right
+3. Rotate Right Right
+4. Rotate Left Left
+5. Rotate Right Left
+6. Rotate Left Right
+
+#### Examples of Different types of rotations for splay trees:
 ![Zig](diagrams/Zig.png "Zig")
 ![ZigZig](diagrams/ZigZig1.png "ZigZig")
 ![ZigZag](diagrams/ZigZag1.png "ZigZag")
