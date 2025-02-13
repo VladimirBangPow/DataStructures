@@ -315,6 +315,44 @@ Even if a search for a key fails (the key doesn't exist), splaying brins the nod
 ![SplaySearch3](diagrams/SplaySearch3.png "SplaySearch3")
 
 ### Treap
+A Treap is a binary search tree on keys and a heap on random priorities. After each standard BST insertion, rotations ensure that a node’s parent always has a larger or equal priority. Because priorities are random, the tree is balanced in expectation with O(log n) average operation time.
+
+#### BST property (by key):
+
+For any node, all keys in its left subtree are smaller than the node’s key, and all keys in its right subtree are larger.
+Heap property (by priority):
+
+Each node also has a priority (often a random number).
+For a max-heap property, for example, a node’s priority is greater than or equal to the priorities of its children.
+
+In practice, the priority is usually chosen randomly when a node is inserted.
+When you insert a node, you:
+
+First insert it into the BST by key (as if you were inserting into a regular BST).
+Then “rotate” the node up or down to fix any violation of the heap property (i.e., making sure each node’s priority remains higher or equal to its children if using a max-heap convention).
+#### When you delete a node, you:
+
+“Rotate” the node down until it becomes a leaf (fixing the heap property by rotating it towards a direction that maintains the priority structure).
+Then remove it from the tree.
+
+#### Why randomize?
+By assigning random priorities to each node and imposing the heap property, the tree’s shape tends to be balanced on average. Specifically, the expected height of a treap is O(log n) with high probability, leading to average O(log n) times for operations such as search, insert, and delete.
+
+#### Key Takeaways
+A treap is a BST with respect to the key and a heap with respect to the priority.
+The priorities are typically random, which ensures a high probability of balanced trees without complex balancing steps used by other self-balancing BSTs (like AVL or Red-Black Trees).
+All main operations (search, insert, delete) can be performed in O(log n) expected time.
+
+#### Example
+
+![Treap1](diagrams/Treap1.png "Treap1")
+![Treap2](diagrams/Treap2.png "Treap2")
+![Treap3](diagrams/Treap3.png "Treap3")
+![Treap4](diagrams/Treap4.png "Treap4")
+![Treap5](diagrams/Treap5.png "Treap5")
+![Treap6](diagrams/Treap6.png "Treap6")
+
+
 ### B-Tree, 
 ### B+ Tree (often used in databases and filesystems)
 
