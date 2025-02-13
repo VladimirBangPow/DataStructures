@@ -86,59 +86,40 @@ static SplayTreeNode* rotateLeft(SplayTreeNode* p) {
  *
  * Returns the new root after the splay operation.
  */
-static SplayTreeNode* splay(SplayTreeNode* root, void* key, CompareFunc cmp) {
-    if (!root) return NULL;
-
-    // Base cases: root itself is null or root->data == key
-    // We'll do a standard BST search, applying splay steps as we go up.
-    SplayTreeNode dummy;
-    SplayTreeNode* leftTreeMax = &dummy;
-    SplayTreeNode* rightTreeMin = &dummy;
-    dummy.left = dummy.right = NULL;
-
-    while (1) {
-        int comp = cmp(key, root->data);
-
-        if (comp < 0) {
-            if (!root->left) break; // Key not in tree, stop
-            // Zig or Zig-Zig or Zig-Zag (left side)
-            int comp2 = cmp(key, root->left->data);
-            if (comp2 < 0) {
-                // Zig-Zig (left-left)
-                root = rotateRight(root);
-                if (!root->left) break;
+SplayTreeNode* splay(SplayTreeNode* root, void* key, CompareFunc cmp) {
+    if (root == NULL) { return NULL; }
+    int comp = cmp(key, root->data);
+    if (comp < 0) {
+        if (root->left == NULL) { return root; }
+        int compLeft = cmp(key, root->left->data);
+        if (compLeft < 0) {
+            root->left->left = splay(root->left->left, key, cmp);
+            root = rotateRight(root);
+        } else if (compLeft > 0) {
+            root->left->right = splay(root->left->right, key, cmp);
+            if (root->left->right) {
+                root->left = rotateLeft(root->left);
             }
-            // If Zig-Zag, we just rotate once above. If still not done, continue.
-
-            // Link right
-            rightTreeMin->left = root;
-            rightTreeMin = root;
-            root = root->left;
-        } else if (comp > 0) {
-            if (!root->right) break; // Key not in tree, stop
-            // Zig or Zig-Zig or Zig-Zag (right side)
-            int comp2 = cmp(key, root->right->data);
-            if (comp2 > 0) {
-                // Zig-Zig (right-right)
-                root = rotateLeft(root);
-                if (!root->right) break;
-            }
-            // Link left
-            leftTreeMax->right = root;
-            leftTreeMax = root;
-            root = root->right;
-        } else {
-            break; // key == root->data, done
         }
+        return (root->left == NULL) ? root : rotateRight(root);
     }
-
-    // Reassemble
-    leftTreeMax->right = root->left;
-    rightTreeMin->left = root->right;
-    root->left = dummy.right;
-    root->right = dummy.left;
-
-    return root;
+    else if (comp > 0) {
+        if (root->right == NULL) { return root; }
+        int compRight = cmp(key, root->right->data);
+        if (compRight > 0) {
+            root->right->right = splay(root->right->right, key, cmp);
+            root = rotateLeft(root);
+        } else if (compRight < 0) {
+            root->right->left = splay(root->right->left, key, cmp);
+            if (root->right->left) {
+                root->right = rotateRight(root->right);
+            }
+        }
+        return (root->right == NULL) ? root : rotateLeft(root);
+    }
+    else {
+        return root;
+    }
 }
 
 /*
