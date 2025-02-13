@@ -309,6 +309,11 @@ Even if a search for a key fails (the key doesn't exist), splaying brins the nod
 ![ZigZig](diagrams/ZigZig1.png "ZigZig")
 ![ZigZag](diagrams/ZigZag1.png "ZigZag")
 
+#### Splaying
+![SplaySearch1](diagrams/SplaySearch1.png "SplaySearch1")
+![SplaySearch2](diagrams/SplaySearch2.png "SplaySearch2")
+![SplaySearch3](diagrams/SplaySearch3.png "SplaySearch3")
+
 ### Treap
 ### B-Tree, 
 ### B+ Tree (often used in databases and filesystems)
