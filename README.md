@@ -343,7 +343,7 @@ A treap is a BST with respect to the key and a heap with respect to the priority
 The priorities are typically random, which ensures a high probability of balanced trees without complex balancing steps used by other self-balancing BSTs (like AVL or Red-Black Trees).
 All main operations (search, insert, delete) can be performed in O(log n) expected time.
 
-#### Example
+#### Insertion Example
 
 ![Treap1](diagrams/Treap1.png "Treap1")
 ![Treap2](diagrams/Treap2.png "Treap2")
@@ -352,7 +352,18 @@ All main operations (search, insert, delete) can be performed in O(log n) expect
 ![Treap5](diagrams/Treap5.png "Treap5")
 ![Treap6](diagrams/Treap6.png "Treap6")
 
+#### Deletion Example
+Treap deletion rules:
+1. Find the node via standard BST search (compare keys, go left/right)
+2. If the node has:
+   - 0 children (leaf): just remomve it
+   - 1 child: remove the node and link the child up
+   - 2 children: rotate the node down (left or right) until it becmes a case of 0 or 1 child, then remove it.
+     	The rotation direction depends on the priorities of the child subtrrees. If left->priority > right->priority, rotate right. Else, rotate left. This pushes down the node to be deleted while keeping the heap property intact on each step.
 
+![Treap7](diagrams/Treap7.png "Treap7")
+![Treap8](diagrams/Treap8.png "Treap8")  
+     
 ### B-Tree, 
 ### B+ Tree (often used in databases and filesystems)
 
