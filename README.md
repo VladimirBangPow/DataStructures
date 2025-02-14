@@ -396,7 +396,7 @@ Here are some key points about B-trees:
 
 Overall, the B-tree’s design is tailored for environments where data must be read from and written to large, slow storage blocks (such as disk pages). By storing multiple keys per node and keeping the tree height small, B-trees reduce expensive I/O operations, making them ideal for large-scale data storage systems.
 
-![BTree1](diagrams/BTree1.png "BTree1")
+![BTree1](diagrams/BTree.png "BTree1")
 ![BTree2](diagrams/BTree2.png "BTree2")
 ![BTree3](diagrams/BTree3.png "BTree3")
 ![BTree4](diagrams/BTree4.png "BTree4")
