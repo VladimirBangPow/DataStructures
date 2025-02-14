@@ -364,7 +364,49 @@ Treap deletion rules:
 ![Treap7](diagrams/Treap7.png "Treap7")
 ![Treap8](diagrams/Treap8.png "Treap8")  
      
-### B-Tree, 
+### B-Tree
+A B-tree is a self-balancing tree data structure commonly used in databases and file systems to store and manage large volumes of data efficiently. Unlike traditional binary search trees, which have at most two children per node, B-trees can have many children per node (often called "branches" or "subtrees"). This multi-way branching design enables B-trees to maintain shallow height even with large data sets, leading to fewer disk or I/O operations—an especially important consideration in database and storage systems.
+
+Here are some key points about B-trees:
+
+1. Multi-way branching:
+- Each node can have multiple keys (or values) and can point to multiple children.
+- The number of keys and children in a node is constrained by a parameter typically called the order or minimum degree of the B-tree.
+
+2. Height is kept small:
+- Because each node can hold multiple keys, the tree’s height grows more slowly than a regular binary tree.
+- This reduces the number of disk accesses needed to find or insert data.
+
+3. Balanced structure:
+- B-trees enforce balance by ensuring that each non-root node has at least a certain minimum number of keys and children, and up to a defined maximum.
+- As new keys are inserted or old keys are deleted, nodes split or merge to maintain balance, preventing the tree from becoming too tall or skewed.
+
+4. Efficient insertion, deletion, and search:
+- All of these operations can be performed in O(log n) time.
+- B-trees are designed for scenarios where slow disk access (or other forms of high-latency storage access) dominates performance.
+- By minimizing the number of disk reads/writes, B-trees achieve better overall performance.
+5. Common uses:
+- Database indexing (e.g., many database management systems use B-trees or variants like B+ trees to store index data).
+- File systems (often used to store directory information, file metadata, and block indices).
+- Key–value stores and other high-performance storage engines.
+
+6. Variants of B-trees:
+- B+ tree: A popular variant where all values (records) are stored in the leaf nodes, and internal nodes store only keys used for navigation. This design can provide better range query performance.
+- B-tree*, B#-tree, etc.: Variants focusing on different performance characteristics or implementation details.
+
+Overall, the B-tree’s design is tailored for environments where data must be read from and written to large, slow storage blocks (such as disk pages). By storing multiple keys per node and keeping the tree height small, B-trees reduce expensive I/O operations, making them ideal for large-scale data storage systems.
+
+![BTree1](diagrams/BTree1.png "BTree1")
+![BTree2](diagrams/BTree2.png "BTree2")
+![BTree3](diagrams/BTree3.png "BTree3")
+![BTree4](diagrams/BTree4.png "BTree4")
+![BTree5](diagrams/BTree5.png "BTree5")
+![BTree6](diagrams/BTree6.png "BTree6")
+![BTree7](diagrams/BTree7.png "BTree7")
+![BTree8](diagrams/BTree8.png "BTree8")
+![BTree9](diagrams/BTree9.png "BTree9")
+![BTree10](diagrams/BTree10.png "BTree10")
+
 ### B+ Tree (often used in databases and filesystems)
 
 ## Heap/Priority Queue
