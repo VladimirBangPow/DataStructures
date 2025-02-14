@@ -422,6 +422,9 @@ Overall, the B-tree’s design is tailored for environments where data must be r
 
 So, the leaf flag makes it efficient and clear to handle B-Tree nodes differently when they do or do not contain child pointers.
 
+#### Important Note on splitting:
+When you insert, you start at the root and mmove down through the children until you reach the appropriate leaf. If the root is full from the start, you'll eventually have to split it anyway. It's easierr and cleaner to split before descending. After the root is split, the newly created root will have fewerr keys, and you can keep descending to the correct leaf child, splitting chhild nodes as needed along the way.
+
 ![BTree1](diagrams/BTree.png "BTree1")
 ![BTree2](diagrams/BTree2.png "BTree2")
 ![BTree3](diagrams/BTree3.png "BTree3")
