@@ -473,6 +473,87 @@ The final statement is of incredible importance:
 ![BTree15](diagrams/BTree15.png "BTree15")
 
 ### B+ Tree (often used in databases and filesystems)
+A B+ tree is a specialized data structure often used in databases and filesystems to maintain sorted data in a way that supports efficient insertion, deletion, and lookup operations (especially for range queries). It is an extension of the B-tree data structure, with some key differences that make it particularly well-suited for disk-based or other secondary-storage-based indexing.
+
+#### Key Characteristics
+1. Balanced Tree Structure
+
+- Like B-trees, B+ trees are balanced, meaning all leaves appear at the same level (the height of every leaf is the same).
+- This ensures that searches, insertions, and deletions take O(logn) time in terms of the number of elements n.
+
+2. Nodes Have a Range of Children
+   
+- B+ trees, like B-trees, have an order (often denoted as m), which specifies the maximum number of children a node can have.
+- Each non-leaf (internal) node can have between ⌈m/2⌉ and m children (except possibly the root which can have fewer).
+- Each leaf node can also hold a certain range of record pointers or data entries.
+
+3. Separation of Internal Keys and Data
+   
+- Internal nodes (also referred to as “index nodes”) only store keys that act as separators (guides) to direct the search.
+- Leaf nodes store the actual data values (in the form of record pointers or references to the data).
+- This is the key difference from a standard B-tree, where both internal nodes and leaves can store actual data.
+
+4. Linked Leaves
+   
+- In a B+ tree, all leaf nodes are linked together in a linked list (often referred to as a horizontal link or leaf chain).
+- This allows efficient range queries, because once a search identifies the starting leaf, the linked list can be traversed to retrieve subsequent values without having to climb back up into the internal tree structure.
+
+5. High Fan-Out
+
+- Because nodes can hold multiple keys and children, B+ trees have a high fan-out.
+- This reduces the height of the tree and typically optimizes for disk-based block I/O by minimizing the number of pages/blocks that need to be read.
+
+
+#### Structure of a B+ Tree
+Let’s consider a B+ tree of order m. The structure follows certain rules:
+
+1. Root Node
+
+- Special cases apply to the root node. The root can have fewer than ⌈m/2⌉ children if it is not full or if the tree has few elements. However, beyond a minimal threshold, it follows the same constraints as other internal nodes.
+
+
+2. Internal Nodes
+
+- Each internal node contains up to m−1 keys and up to m child pointers.
+- Each key in an internal node serves as a separator defining ranges for the child pointers. For example, if an internal node has keys [𝑘1,𝑘2,…,𝑘𝑛], the pointers between and around these keys direct the search for values less than 𝑘1, between 𝑘1 and 𝑘2, etc.
+
+3. Leaf Nodes
+
+- All actual data records or pointers to data are stored in the leaf nodes.
+- Each leaf node can hold between ⌈𝑚/2⌉ and m entries (depending on the exact variant of the B+ tree).
+- Each leaf node has a pointer to the next leaf node (and optionally a pointer to the previous leaf node for a doubly linked structure). This is crucial for efficient range queries.
+
+#### Operations
+1. Search (Lookup)
+- Start from the root node.
+- Compare the search key with the keys in the current node to find the correct child pointer to follow.
+- Move down the tree level by level until you reach a leaf node.
+- Within the leaf node, search through its entries for the specific key (if it exists).
+- Return the record pointer or indication that the key was not found.
+Time Complexity: 𝑂(log𝑛) due to the balanced tree property.
+
+2. Insertion
+- Search for the correct leaf node where the new key should be inserted.
+- Insert the key into the leaf node (keeping the leaf node’s keys in sorted order).
+- If the leaf node does not overflow (i.e., does not exceed m entries), the insertion is complete.
+- If the leaf node overflows:
+	- Split the leaf into two nodes, typically around the median key.
+	- Promote the middle key (or a separator key) to the parent internal node.
+	- If the parent internal node also overflows, recursively split and promote further up.
+	- If the split reaches the root (and the root overflows), create a new root node and increase the tree height by one.
+Time Complexity: 𝑂(log𝑛)
+
+3. Deletion
+- Search the leaf node containing the key to be deleted.
+- Remove the key from the leaf node.
+- If the leaf node still has enough entries (at least ⌈𝑚/2⌉), no further action is required.
+- If it underflows (i.e., has fewer entries than ⌈𝑚/2⌉):
+	- Attempt to “borrow” an entry from a sibling node if the sibling has extra.
+	- If borrowing is not possible, merge the leaf with a sibling, effectively reducing the number of leaf nodes by one.
+	- Update or remove the corresponding separator key in the parent internal node.
+	- If the parent underflows, recursively handle it in the same manner (borrow from or merge with sibling).
+	- If merging/splitting occurs at the root and results in underflow, the root can be adjusted.
+Time Complexity: 𝑂(log𝑛) similarly to insertion.
 
 ## Heap/Priority Queue
 
@@ -552,9 +633,7 @@ A self-balancing BST that also keeps track of subtree sizes, enabling rank queri
 
 A tree-like structure for integer keys in a bounded universe. Achieves O(log log M) operations for a universe of size M.
 
-## Cartesian Tree, Treap
 
-Hybrids of BST + heap properties for specialized use.
 # 5. Persistent Data Structures
 Versions of lists, trees, tries, etc. that keep previous versions of themselves immutable while still allowing new updates.
 Uses structural sharing to avoid copying entire data structures on each modification.
