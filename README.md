@@ -425,6 +425,34 @@ So, the leaf flag makes it efficient and clear to handle B-Tree nodes differentl
 #### Important Note on splitting:
 When you insert, you start at the root and mmove down through the children until you reach the appropriate leaf. If the root is full from the start, you'll eventually have to split it anyway. It's easierr and cleaner to split before descending. After the root is split, the newly created root will have fewerr keys, and you can keep descending to the correct leaf child, splitting chhild nodes as needed along the way.
 
+#### Important Note on Searching:
+We use a linear scan for the key:
+`for(i=0; i<cur->nkeys && tree->cmp(keyy, cur->keys[i])>0; i++);`
+The loop advances i until one of the two conditions is met:
+1. We have checked all cur->nkeys
+2. We encounter a key that is greater than or equal to key.
+
+Next we check if we encountered the key
+
+`
+if (i<cur->nkeys && tree->cmp(key, cur->keys[i])==0){return cur->keys[i];}
+`
+
+`
+else if (cur->leaf){return NULL;}
+`
+
+`
+else {cur=cur->children[i];}
+`
+
+The final statement is of incredible importance:
+1. It shows how the B-Tree is structured.
+2. If we stop on the i'th key in the key list, then we also descend into the i'th child.
+3. To understand further, you would need to understand how the insert function works for B-Tree
+4. Remember B-Tree's have nodes that have between t-1 and 2t-1 keys, and the number of children = (number of keys)+1
+5. If a node has n keyys, they act as "dividers" splittingg the key space into n+1 regions. Each gap corresponds to one child pointer
+
 ![BTree1](diagrams/BTree.png "BTree1")
 ![BTree2](diagrams/BTree2.png "BTree2")
 ![BTree3](diagrams/BTree3.png "BTree3")
