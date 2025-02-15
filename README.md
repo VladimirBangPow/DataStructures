@@ -453,6 +453,9 @@ The final statement is of incredible importance:
 4. Remember B-Tree's have nodes that have between t-1 and 2t-1 keys, and the number of children = (number of keys)+1
 5. If a node has n keyys, they act as "dividers" splittingg the key space into n+1 regions. Each gap corresponds to one child pointer
 
+#### Important Note on Insertion:
+1. When we split the full child, we are never actually zero'ing out the key locations that move to new nodes, we are merely keeping track of nkeys of the old child. This is because we essentially copy the right half of the full child into a new child, then we promote the middle key, and keep the rest (to the left) in the old child. That's why we don't have to erase anything.
+
 ![BTree1](diagrams/BTree.png "BTree1")
 ![BTree2](diagrams/BTree2.png "BTree2")
 ![BTree3](diagrams/BTree3.png "BTree3")
