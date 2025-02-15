@@ -457,12 +457,12 @@ The final statement is of incredible importance:
 ![BTree2](diagrams/BTree2.png "BTree2")
 ![BTree3](diagrams/BTree3.png "BTree3")
 ![BTree4](diagrams/BTree4.png "BTree4")
-![BTree5](diagrams/BTree5(1).png "BTree5")
-![BTree6](diagrams/BTree6(1).png "BTree6")
-![BTree7](diagrams/BTree7(1).png "BTree7")
-![BTree8](diagrams/BTree8(1).png "BTree8")
-![BTree9](diagrams/BTree9(1).png "BTree9")
-![BTree10](diagrams/BTree10(1).png "BTree10")
+![BTree5](diagrams/BTree5(2).png "BTree5")
+![BTree6](diagrams/BTree6(2).png "BTree6")
+![BTree7](diagrams/BTree7(2).png "BTree7")
+![BTree8](diagrams/BTree8(2).png "BTree8")
+![BTree9](diagrams/BTree9(2).png "BTree9")
+![BTree10](diagrams/BTree10(2).png "BTree10")
 
 ### B+ Tree (often used in databases and filesystems)
 
