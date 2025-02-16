@@ -543,6 +543,17 @@ Time Complexity: 𝑂(log𝑛) due to the balanced tree property.
 	- If the split reaches the root (and the root overflows), create a new root node and increase the tree height by one.
 Time Complexity: 𝑂(log𝑛)
 
+![B+1](diagrams/B+1.png "B+1")
+![B+2](diagrams/B+2.png "B+2")
+![B+3](diagrams/B+3.png "B+3")
+![B+4](diagrams/B+4.png "B+4")
+![B+5](diagrams/B+5.png "B+5")
+![B+6](diagrams/B+6.png "B+6")
+![B+7](diagrams/B+7.png "B+7")
+![B+8](diagrams/B+8.png "B+8")
+![B+9](diagrams/B+9.png "B+9")
+![B+10](diagrams/B+10.png "B+10")
+
 3. Deletion
 - Search the leaf node containing the key to be deleted.
 - Remove the key from the leaf node.
@@ -555,16 +566,14 @@ Time Complexity: 𝑂(log𝑛)
 	- If merging/splitting occurs at the root and results in underflow, the root can be adjusted.
 Time Complexity: 𝑂(log𝑛) similarly to insertion.
 
-![B+1](diagrams/B+1.png "B+1")
-![B+2](diagrams/B+2.png "B+2")
-![B+3](diagrams/B+3.png "B+3")
-![B+4](diagrams/B+4.png "B+4")
-![B+5](diagrams/B+5.png "B+5")
-![B+6](diagrams/B+6.png "B+6")
-![B+7](diagrams/B+7.png "B+7")
-![B+8](diagrams/B+8.png "B+8")
-![B+9](diagrams/B+9.png "B+9")
-![B+10](diagrams/B+10.png "B+10")
+![B+11](diagrams/B+11.png "B+11")
+![B+12](diagrams/B+12.png "B+12")
+![B+13](diagrams/B+13.png "B+13")
+![B+14](diagrams/B+14.png "B+14")
+![B+15](diagrams/B+15.png "B+15")
+
+
+
 
 ## Heap/Priority Queue
 
