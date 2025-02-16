@@ -245,7 +245,7 @@ If the rotation cost is not significant in your application and you want the bes
 In practice, however, Red-Black trees are often used as the standard go-to self-balancing BST in many libraries because they provide efficient and predictable performance over a wide range of operations and use cases.
 
 
-### AVL Tree
+## AVL Tree
 ![AVL1](diagrams/AVLTree1.png "AVL1")
 ![AVL2](diagrams/AVLTree2.png "AVL2")
 ![AVL3](diagrams/AVLTree3.png "AVL3")
@@ -256,7 +256,7 @@ In practice, however, Red-Black trees are often used as the standard go-to self-
 ![AVL8](diagrams/AVLTree8.png "AVL8")
 ![AVL9](diagrams/AVLTree9.png "AVL9")
 
-### Red–Black Tree
+## Red–Black Tree
 #### 5 Primary Rules:
 
 1. A node is either red or black
@@ -290,7 +290,7 @@ https://www.youtube.com/watch?v=nMExd4DthdA&list=PLOXdJ6q8iu4MneI9gySCHiyzAQcveq
 ![RBT11](diagrams/RBT11.png "RBT11")
 ![RBT12](diagrams/RBT12.png "RBT12")
 
-### Splay Tree
+## Splay Tree
 #### The 'key' to understand 'splaying'
 Even if a search for a key fails (the key doesn't exist), splaying brins the node closest to that key to the root. This is beneficial if future searches are near that same key or if you end up inserting that key next (the place it needs to ggo is now near the root). Similarlyy, after you insert a node or delete a node, you splay so that frequent or recent acesses stay near the top.
 #### Primitive Rotations
@@ -314,7 +314,7 @@ Even if a search for a key fails (the key doesn't exist), splaying brins the nod
 ![SplaySearch2](diagrams/SplaySearch2.png "SplaySearch2")
 ![SplaySearch3](diagrams/SplaySearch3.png "SplaySearch3")
 
-### Treap
+## Treap
 A Treap is a binary search tree on keys and a heap on random priorities. After each standard BST insertion, rotations ensure that a node’s parent always has a larger or equal priority. Because priorities are random, the tree is balanced in expectation with O(log n) average operation time.
 
 #### BST property (by key):
@@ -364,7 +364,7 @@ Treap deletion rules:
 ![Treap7](diagrams/Treap7.png "Treap7")
 ![Treap8](diagrams/Treap8.png "Treap8")  
      
-### B-Tree
+## B-Tree
 A B-tree is a self-balancing tree data structure commonly used in databases and file systems to store and manage large volumes of data efficiently. Unlike traditional binary search trees, which have at most two children per node, B-trees can have many children per node (often called "branches" or "subtrees"). This multi-way branching design enables B-trees to maintain shallow height even with large data sets, leading to fewer disk or I/O operations—an especially important consideration in database and storage systems.
 
 #### Here are some key points about B-trees:
@@ -472,10 +472,10 @@ The final statement is of incredible importance:
 ![BTree14](diagrams/BTree14.png "BTree14")
 ![BTree15](diagrams/BTree15.png "BTree15")
 
-### B+ Tree (often used in databases and filesystems)
+## B+ Tree (often used in databases and filesystems)
 A B+ tree is a specialized data structure often used in databases and filesystems to maintain sorted data in a way that supports efficient insertion, deletion, and lookup operations (especially for range queries). It is an extension of the B-tree data structure, with some key differences that make it particularly well-suited for disk-based or other secondary-storage-based indexing.
 
-#### Key Characteristics
+### Key Characteristics
 1. Balanced Tree Structure
 
 - Like B-trees, B+ trees are balanced, meaning all leaves appear at the same level (the height of every leaf is the same).
@@ -504,7 +504,7 @@ A B+ tree is a specialized data structure often used in databases and filesystem
 - This reduces the height of the tree and typically optimizes for disk-based block I/O by minimizing the number of pages/blocks that need to be read.
 
 
-#### Structure of a B+ Tree
+### Structure of a B+ Tree
 Let’s consider a B+ tree of order m. The structure follows certain rules:
 
 1. Root Node
@@ -523,7 +523,7 @@ Let’s consider a B+ tree of order m. The structure follows certain rules:
 - Each leaf node can hold between ⌈𝑚/2⌉ and m entries (depending on the exact variant of the B+ tree).
 - Each leaf node has a pointer to the next leaf node (and optionally a pointer to the previous leaf node for a doubly linked structure). This is crucial for efficient range queries.
 
-#### Operations
+### Operations
 1. Search (Lookup)
 - Start from the root node.
 - Compare the search key with the keys in the current node to find the correct child pointer to follow.
@@ -554,6 +554,17 @@ Time Complexity: 𝑂(log𝑛)
 	- If the parent underflows, recursively handle it in the same manner (borrow from or merge with sibling).
 	- If merging/splitting occurs at the root and results in underflow, the root can be adjusted.
 Time Complexity: 𝑂(log𝑛) similarly to insertion.
+
+![B+1](diagrams/B+1.png "B+1")
+![B+2](diagrams/B+2.png "B+2")
+![B+3](diagrams/B+3.png "B+3")
+![B+4](diagrams/B+4.png "B+4")
+![B+5](diagrams/B+5.png "B+5")
+![B+6](diagrams/B+6.png "B+6")
+![B+7](diagrams/B+7.png "B+7")
+![B+8](diagrams/B+8.png "B+8")
+![B+9](diagrams/B+9.png "B+9")
+![B+10](diagrams/B+10.png "B+10")
 
 ## Heap/Priority Queue
 
