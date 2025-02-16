@@ -15,24 +15,27 @@
 #include "SplayTree/test_splay_tree.h"
 #include "Treap/test_treap.h"
 #include "BTree/test_btree.h"
+#include "BPTree/test_bp_tree.h"
 
 int main(void) {
-    testLinkedList();
-    testStack();
-    testDoubleLinkedList();
-    testQueue();
-    testDeque();
-    testCircularList();
-	testDynamicArray();
-	testCString();
-    testSkipList();
-    testHashTable();
-    testBinaryTree();
-    testBinarySearchTree();
-    testAvlTree();
-	testRedBlackTree();
-	testSplayTree();
-	testTreap();
-	testBTree();
+    // testLinkedList();
+    // testStack();
+    // testDoubleLinkedList();
+    // testQueue();
+    // testDeque();
+    // testCircularList();
+	// testDynamicArray();
+	// testCString();
+    // testSkipList();
+    // testHashTable();
+    // testBinaryTree();
+    // testBinarySearchTree();
+    // testAvlTree();
+	// testRedBlackTree();
+	// testSplayTree();
+	// testTreap();
+	// testBTree();
+    testBPTree();
+
     return 0;
 }
