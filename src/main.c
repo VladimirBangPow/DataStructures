@@ -13,6 +13,8 @@
 #include "AvlTree/test_avl.h"
 #include "RedBlackTree/test_red_black_tree.h"
 #include "SplayTree/test_splay_tree.h"
+#include "Treap/test_treap.h"
+#include "BTree/test_btree.h"
 
 int main(void) {
     testLinkedList();
@@ -30,7 +32,7 @@ int main(void) {
     testAvlTree();
 	testRedBlackTree();
 	testSplayTree();
-
-
+	testTreap();
+	testBTree();
     return 0;
 }

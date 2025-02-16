@@ -19,6 +19,9 @@ all:
 		AvlTree/avl_tree.c AvlTree/test_avl.c \
 		RedBlackTree/red_black_tree.c RedBlackTree/test_red_black_tree.c \
 		SplayTree/splay_tree.c SplayTree/test_splay_tree.c \
+		Treap/treap.c Treap/test_treap.c \
+		BTree/btree.c BTree/test_btree.c \
+		BPTree/bp_tree.c BPTree/test_bp_tree.c \
 	    -o main \
 		-lm
 
