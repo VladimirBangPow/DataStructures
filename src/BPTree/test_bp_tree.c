@@ -288,8 +288,8 @@ static void test_person(void) {
  * ------------------------------------------------------------------------- */
 static void test_stress(void) {
     const int ORDER = 5;      // a bit larger order to see more splits
-    const int N = 500;        // number of random inserts
-    const int OPS = 200;      // number of random delete ops
+    const int N = 50000;        // number of random inserts
+    const int OPS = 20000;      // number of random delete ops
 
     BPTree* tree = bptree_create(ORDER, bptree_int_cmp);
     if (!tree) {
@@ -305,7 +305,7 @@ static void test_stress(void) {
 
     // Insert random keys
     for (int i = 0; i < N; i++) {
-        keys[i] = rand() % 10000;   // random key
+        keys[i] = rand() % 100000000;   // random key
         values[i] = i;             // arbitrary "value"
 
         bptree_insert(tree, &keys[i], &values[i]);
@@ -396,6 +396,7 @@ static bool validate_subtree(BPTree* tree, BPTreeNode* node, int* leaf_level, in
     for (int i = 0; i < node->num_keys - 1; i++) {
         if (cmp(node->keys[i], node->keys[i + 1]) > 0) {
             // not sorted
+            printf("Unsorted keys at level %d\n", current_level);
             return false;
         }
     }
@@ -406,16 +407,20 @@ static bool validate_subtree(BPTree* tree, BPTreeNode* node, int* leaf_level, in
         // We'll skip strict checks for an empty/small root for demonstration.
     } else {
         // min required (except possibly if root is the only node)
-        int min_keys = (order - 1) / 2;
-        if (node->num_keys < min_keys && node->parent != NULL) {
-            // underflow
-            return false;
+        if (node != tree->root) {
+            int min_keys = (order - 1) / 2;
+            if (node->num_keys < min_keys && node->parent != NULL) {
+                // underflow
+                printf("Underflow at level %d\n", current_level);
+                return false;
+            }
         }
     }
 
     // max check
     if (node->num_keys > (order - 1)) {
         // overflow
+        printf("Overflow at level %d\n", current_level);
         return false;
     }
 
@@ -426,6 +431,7 @@ static bool validate_subtree(BPTree* tree, BPTreeNode* node, int* leaf_level, in
         } else {
             if (current_level != *leaf_level) {
                 // mismatch in leaf level => unbalanced
+                printf("Unbalanced leaves: level %d vs %d\n", *leaf_level, current_level);
                 return false;
             }
         }
@@ -435,9 +441,11 @@ static bool validate_subtree(BPTree* tree, BPTreeNode* node, int* leaf_level, in
             BPTreeNode* child = node->children[i];
             if (child) {
                 if (child->parent != node) {
+                    printf("Child-parent mismatch at level %d\n", current_level);
                     return false;
                 }
                 if (!validate_subtree(tree, child, leaf_level, current_level + 1)) {
+                    printf("Subtree invalid at level %d\n", current_level);
                     return false;
                 }
             }

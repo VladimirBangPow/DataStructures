@@ -78,6 +78,33 @@ void bptree_destroy(BPTree* tree) {
     free(tree);
 }
 
+/* Frees all nodes in the subtree rooted at 'node' recursively. */
+static void free_node(BPTreeNode* node) {
+    if (!node) return;
+
+    // If internal node, free children subtrees
+    if (!node->is_leaf) {
+        for (int i = 0; i <= node->num_keys; i++) {
+            free_node(node->children[i]);
+        }
+    }
+    // Free arrays
+    free(node->keys);
+    if (node->values) {
+        free(node->values);
+    }
+    free(node->children);
+
+    // Finally, free the node itself
+    free(node);
+}
+
+static void set_parent(BPTreeNode* child, BPTreeNode* parent) {
+    if (child) {
+        child->parent = parent;
+    }
+}
+
 /* Insert a (key, value) pair into the B+ tree. */
 void bptree_insert(BPTree* tree, void* key, void* value) {
     BPTreeNode* root = tree->root;
@@ -88,7 +115,9 @@ void bptree_insert(BPTree* tree, void* key, void* value) {
         // Create a new root
         BPTreeNode* new_root = create_node(order, false);
         new_root->children[0] = root;
-        set_parent(root, new_root);
+        if (root){
+            root->parent = new_root;
+        }
 
         // Split the old root
         split_child(tree, new_root, 0);
@@ -179,103 +208,94 @@ static BPTreeNode* create_node(int order, bool is_leaf) {
     return node;
 }
 
-/* Frees all nodes in the subtree rooted at 'node' recursively. */
-static void free_node(BPTreeNode* node) {
-    if (!node) return;
 
-    // If internal node, free children subtrees
-    if (!node->is_leaf) {
-        for (int i = 0; i <= node->num_keys; i++) {
-            free_node(node->children[i]);
-        }
-    }
-    // Free arrays
-    free(node->keys);
-    if (node->values) {
-        free(node->values);
-    }
-    free(node->children);
-
-    // Finally, free the node itself
-    free(node);
-}
-
-static void set_parent(BPTreeNode* child, BPTreeNode* parent) {
-    if (child) {
-        child->parent = parent;
-    }
-}
 
 /* ---------------------- Insertion Helpers ---------------------- */
 
 /**
- * Split a full child of 'parent' at index 'child_index'.
- * Standard B+ tree split: half keys go to a new node, and
- * one key is promoted to the parent (for an internal node).
+ * split_child:
+ * Splits a "full_child" node of 'parent' at 'child_index' into two roughly
+ * half-full nodes. For a pure B+ tree:
+ *
+ *  - LEAF SPLIT: the "promoted" key is the first key of the new (right) leaf.
+ *  - INTERNAL SPLIT: the "promoted" key is the first key of the new (right) internal node.
+ *  - We do NOT remove the middle key from the left node (that is a B-Tree convention).
+ *  - We update all child->parent pointers so the subtree remains consistent.
  */
 static void split_child(BPTree* tree, BPTreeNode* parent, int child_index) {
     BPTreeNode* full_child = parent->children[child_index];
     int order = tree->order;
 
-    // Create a new node to hold the right half of 'full_child'
+    // 1. Create a new (right) node
     BPTreeNode* new_node = create_node(order, full_child->is_leaf);
-    set_parent(new_node, parent);
+    new_node->parent = parent;
 
-    int mid = (order - 1) / 2;
+    // 2. The number of keys currently in full_child
+    int n = full_child->num_keys;
 
-    // If it's a leaf node, move the upper half of the keys/values
+    // We'll split around half
+    // mid is how many keys remain in the left node
+    int mid = (n + 1) / 2;  
+
     if (full_child->is_leaf) {
-        // new_node gets the right half of full_child
-        new_node->num_keys = full_child->num_keys - mid;
+        // ---------- Leaf Split (B+ Tree) ----------
+        // The new node gets the 'top half' of the keys
+        new_node->num_keys = n - mid;
+
+        // Copy from full_child into new_node
         for (int i = 0; i < new_node->num_keys; i++) {
-            new_node->keys[i] = full_child->keys[mid + i];
+            new_node->keys[i]   = full_child->keys[mid + i];
             new_node->values[i] = full_child->values[mid + i];
         }
-
+        // Left node keeps mid keys
         full_child->num_keys = mid;
 
-        // Link the sibling
+        // Link siblings
         new_node->next = full_child->next;
         full_child->next = new_node;
 
-        // Insert the new_node into the parent
-        // The "promoted" key is new_node->keys[0]
+        // Insert the new node into parent's child array
         for (int i = parent->num_keys; i > child_index; i--) {
+            parent->keys[i]         = parent->keys[i - 1];
             parent->children[i + 1] = parent->children[i];
-            parent->keys[i] = parent->keys[i - 1];
         }
+        // Parent's promoted key is the first key of new_node
+        parent->keys[child_index]         = new_node->keys[0];
         parent->children[child_index + 1] = new_node;
-        parent->keys[child_index] = new_node->keys[0];
         parent->num_keys++;
-    }
-    else {
-        // Internal node splitting
-        // new_node gets the right half of the keys (minus the "middle" key)
-        new_node->num_keys = full_child->num_keys - mid - 1;
+
+    } else {
+        // --------- Internal Split (B+ Tree) ---------
+        // new_node gets the right half of the keys
+        new_node->num_keys = n - mid;
+
         for (int i = 0; i < new_node->num_keys; i++) {
-            new_node->keys[i] = full_child->keys[mid + 1 + i];
+            new_node->keys[i] = full_child->keys[mid + i];
         }
         // Copy children
         for (int i = 0; i <= new_node->num_keys; i++) {
-            new_node->children[i] = full_child->children[mid + 1 + i];
-            set_parent(new_node->children[i], new_node);
+            new_node->children[i] = full_child->children[mid + i];
+            if (new_node->children[i]) {
+                new_node->children[i]->parent = new_node;
+            }
         }
-
-        // The middle key is promoted to the parent
-        void* promoted_key = full_child->keys[mid];
-
+        // The left node keeps mid keys
         full_child->num_keys = mid;
 
-        // Insert new_node into parent
+        // Insert new_node into the parent
         for (int i = parent->num_keys; i > child_index; i--) {
+            parent->keys[i]         = parent->keys[i - 1];
             parent->children[i + 1] = parent->children[i];
-            parent->keys[i] = parent->keys[i - 1];
         }
+        // Promoted key is new_node->keys[0] (pure B+ approach)
+        parent->keys[child_index]         = new_node->keys[0];
         parent->children[child_index + 1] = new_node;
-        parent->keys[child_index] = promoted_key;
         parent->num_keys++;
     }
 }
+
+
+
 
 static void insert_non_full(BPTree* tree, BPTreeNode* node, void* key, void* value) {
     int i = node->num_keys - 1;
