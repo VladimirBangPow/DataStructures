@@ -509,7 +509,7 @@
  /* ------------------------- Borrowing Functions -------------------------- */
  static void borrow_from_left_leaf(BPTreeNode* node, BPTreeNode* left, int parentIndex) 
  {
-     printf("Borrowing from left leaf\n");
+    //  printf("Borrowing from left leaf\n");
      // Move last key of left -> front of node
      int last = left->num_keys - 1;
      void* borrowedKey = left->keys[last];
@@ -532,7 +532,7 @@
  
  static void borrow_from_right_leaf(BPTreeNode* node, BPTreeNode* right, int parentIndex) 
  {
-     printf("Borrowing from right leaf\n");
+    //  printf("Borrowing from right leaf\n");
      // Move first key of right -> end of node
      void* borrowedKey = right->keys[0];
      void* borrowedVal = right->values[0];
