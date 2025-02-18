@@ -1,18 +1,12 @@
 /******************************************************************************
  * bptree.c
  *
- * A B+ tree implementation conforming to bptree.h
- * Now with a full deletion implementation.
- *
- * Key points:
- *  - We store 'void *' in keys and values. The user supplies a comparator (cmp).
- *  - Insertion & search are O(log N). Deletion is also O(log N).
- *  - We label the insertion scenarios (1-6). Deletion uses standard B+ logic:
- *    * Find leaf, remove key
- *    * If node underflows, borrow or merge
- *    * Possibly merge upward
- *    * Adjust root if empty or single child
- *
+ * B+ Tree Implementation with both Insertion & Deletion.
+ * 
+ * Key Fixes:
+ *  - free_node(...) now frees keys, children, values
+ *  - After merges, set parent->keys[] / parent->children[] out-of-range slots to NULL
+ *  - Ensures empty internal/leaf nodes are fully removed.
  ******************************************************************************/
 
  #include <stdio.h>
@@ -21,11 +15,16 @@
  #include <string.h>
  #include "bp_tree.h"
  
+ /* For simplicity, we define a small ORDER = 4. */
+ #define ORDER 4
+ #define MIN_CHILDREN ((ORDER + 1) / 2)  // 2 for ORDER=4
+ #define MAX_KEYS (ORDER - 1)           // 3 if ORDER=4
+ #define MIN_KEYS (MIN_CHILDREN - 1)    // 1 if ORDER=4
+ 
  /* --------------------------------------------------------------------------
   * A simple integer comparator for convenience
   * -------------------------------------------------------------------------- */
  int bptree_int_cmp(const void* a, const void* b) {
-     /* 'a' and 'b' are pointers to int. */
      int x = *(const int*)a;
      int y = *(const int*)b;
      if (x < y) return -1;
@@ -34,26 +33,26 @@
  }
  
  /* --------------------------------------------------------------------------
-  * Internal helper: create a BPTreeNode
+  * BPTreeNode creation
   * -------------------------------------------------------------------------- */
  static BPTreeNode* bptree_node_create(int order, bool is_leaf) {
      BPTreeNode* node = (BPTreeNode*)calloc(1, sizeof(BPTreeNode));
      if (!node) {
-         fprintf(stderr, "Error: Could not allocate BPTreeNode.\n");
+         fprintf(stderr, "Error: node allocation failed.\n");
          return NULL;
      }
      node->is_leaf  = is_leaf;
      node->num_keys = 0;
      node->keys     = (void**)calloc(order - 1, sizeof(void*));
-     node->children = (BPTreeNode**)calloc(order, sizeof(BPTreeNode*));
-     node->values   = NULL;  /* only used if leaf */
+     node->children = (BPTreeNode**)calloc(order,   sizeof(BPTreeNode*));
+     node->values   = NULL;
  
      if (is_leaf) {
-         /* leaf has up to (order - 1) key/value pairs */
          node->values = (void**)calloc(order - 1, sizeof(void*));
      }
+ 
      node->parent = NULL;
-     node->next   = NULL; /* used in leaf chaining */
+     node->next   = NULL;
      return node;
  }
  
@@ -66,15 +65,10 @@
          return NULL;
      }
      if (!cmp) {
-         fprintf(stderr, "Comparator function is NULL.\n");
+         fprintf(stderr, "Comparator function cannot be NULL.\n");
          return NULL;
      }
- 
      BPTree* tree = (BPTree*)calloc(1, sizeof(BPTree));
-     if (!tree) {
-         fprintf(stderr, "Error: Could not allocate BPTree.\n");
-         return NULL;
-     }
      tree->order = order;
      tree->root  = NULL;
      tree->cmp   = cmp;
@@ -82,16 +76,16 @@
  }
  
  /* --------------------------------------------------------------------------
-  * Free an entire subtree (post-order traversal).
+  * Recursive free of all nodes in a subtree
   * -------------------------------------------------------------------------- */
  static void bptree_node_free_subtree(BPTreeNode* node, int order) {
      if (!node) return;
      if (!node->is_leaf) {
-         /* internal node: free children first */
          for (int i = 0; i <= node->num_keys; i++) {
              bptree_node_free_subtree(node->children[i], order);
          }
      }
+     /* Properly free everything in node. */
      free(node->keys);
      free(node->children);
      if (node->is_leaf) {
@@ -100,9 +94,7 @@
      free(node);
  }
  
- /* --------------------------------------------------------------------------
-  * bptree_destroy
-  * -------------------------------------------------------------------------- */
+ /* bptree_destroy */
  void bptree_destroy(BPTree* tree) {
      if (!tree) return;
      if (tree->root) {
@@ -112,16 +104,23 @@
  }
  
  /* --------------------------------------------------------------------------
-  * find_leaf: descend the tree until a leaf node is found.
+  * bptree_search
   * -------------------------------------------------------------------------- */
+ static BPTreeNode* bptree_find_leaf(BPTree* tree, void* key);
+ static void* bptree_search_in_leaf(BPTreeNode* leaf, bptree_cmp cmp, void* key);
+ 
+ void* bptree_search(BPTree* tree, void* key) {
+     if (!tree->root) return NULL;
+     BPTreeNode* leaf = bptree_find_leaf(tree, key);
+     if (!leaf) return NULL;
+     return bptree_search_in_leaf(leaf, tree->cmp, key);
+ }
+ 
  static BPTreeNode* bptree_find_leaf(BPTree* tree, void* key) {
      BPTreeNode* current = tree->root;
      while (current && !current->is_leaf) {
          int i = 0;
-         while (i < current->num_keys) {
-             if (tree->cmp(key, current->keys[i]) < 0) {
-                 break;
-             }
+         while (i < current->num_keys && tree->cmp(key, current->keys[i]) >= 0) {
              i++;
          }
          current = current->children[i];
@@ -129,10 +128,9 @@
      return current;
  }
  
- /* search_in_leaf: find the matching key. Return corresponding value pointer or NULL. */
  static void* bptree_search_in_leaf(BPTreeNode* leaf, bptree_cmp cmp, void* key) {
-     for (int i = 0; i < leaf->num_keys; i++) {
-         if (cmp(key, leaf->keys[i]) == 0) {
+     for (int i=0; i<leaf->num_keys; i++) {
+         if (cmp(key, leaf->keys[i])==0) {
              return leaf->values[i];
          }
      }
@@ -140,28 +138,16 @@
  }
  
  /* --------------------------------------------------------------------------
-  * bptree_search
-  * -------------------------------------------------------------------------- */
- void* bptree_search(BPTree* tree, void* key) {
-     if (!tree || !tree->root) {
-         return NULL;
-     }
-     BPTreeNode* leaf = bptree_find_leaf(tree, key);
-     if (!leaf) return NULL;
-     return bptree_search_in_leaf(leaf, tree->cmp, key);
- }
- 
- /* --------------------------------------------------------------------------
-  * Insertion logic (scenarios 1-6)
+  * bptree_insert: (Scenarios 1–6)
   * -------------------------------------------------------------------------- */
  static void bptree_insert_leaf_no_split(BPTreeNode* leaf, bptree_cmp cmp, void* key, void* value);
  static void bptree_insert_leaf_split(BPTree* tree, BPTreeNode* leaf, void* key, void* value);
  static void bptree_insert_into_parent(BPTree* tree, BPTreeNode* left, void* up_key, BPTreeNode* right);
- static void insert_into_node(BPTreeNode* node, int idx, void* key, BPTreeNode* right);
+ static void insert_into_node(BPTreeNode* node, int index, void* key, BPTreeNode* right);
  
  void bptree_insert(BPTree* tree, void* key, void* value) {
      if (!tree->root) {
-         /* SCENARIO 1: Empty Tree */
+         /* SCENARIO 1: Empty tree => new leaf root */
          BPTreeNode* leaf = bptree_node_create(tree->order, true);
          leaf->keys[0]   = key;
          leaf->values[0] = value;
@@ -170,21 +156,20 @@
          return;
      }
  
-     /* find leaf */
+     /* find leaf for 'key' */
      BPTreeNode* leaf = bptree_find_leaf(tree, key);
  
      if (leaf->num_keys < (tree->order - 1)) {
          /* SCENARIO 2: Leaf has space */
          bptree_insert_leaf_no_split(leaf, tree->cmp, key, value);
      } else {
-         /* SCENARIO 3: Leaf is full -> split */
+         /* SCENARIO 3: Leaf is full => split */
          bptree_insert_leaf_split(tree, leaf, key, value);
      }
  }
  
- /* Leaf insertion without split */
  static void bptree_insert_leaf_no_split(BPTreeNode* leaf, bptree_cmp cmp, void* key, void* value) {
-     int i = leaf->num_keys - 1;
+     int i = leaf->num_keys -1;
      while (i >= 0 && cmp(key, leaf->keys[i]) < 0) {
          leaf->keys[i+1]   = leaf->keys[i];
          leaf->values[i+1] = leaf->values[i];
@@ -196,68 +181,64 @@
      leaf->num_keys++;
  }
  
- /* Leaf insertion with split => new leaf and promote up_key */
+ /* Scenario 3: Leaf full => split */
  static void bptree_insert_leaf_split(BPTree* tree, BPTreeNode* leaf, void* key, void* value) {
      int order = tree->order;
      void** temp_keys   = (void**)calloc(order, sizeof(void*));
-     void** temp_vals   = (void**)calloc(order, sizeof(void*));
-     if (!temp_keys || !temp_vals) {
-         free(temp_keys); free(temp_vals);
-         return;
-     }
+     void** temp_values = (void**)calloc(order, sizeof(void*));
  
-     /* merge old + new in temp */
+     /* figure out insertion index */
      int insert_idx = 0;
      while (insert_idx < leaf->num_keys && tree->cmp(key, leaf->keys[insert_idx]) > 0) {
          insert_idx++;
      }
+ 
+     /* merge existing keys + new key into temp arrays */
      int i, j;
-     for (i = 0, j = 0; i < leaf->num_keys; i++, j++) {
-         if (j == insert_idx) {
-             j++;
-         }
-         temp_keys[j] = leaf->keys[i];
-         temp_vals[j] = leaf->values[i];
+     for (i=0, j=0; i<leaf->num_keys; i++, j++) {
+         if (j == insert_idx) j++;
+         temp_keys[j]   = leaf->keys[i];
+         temp_values[j] = leaf->values[i];
      }
-     /* place new key/value */
-     temp_keys[insert_idx] = key;
-     temp_vals[insert_idx] = value;
+     temp_keys[insert_idx]   = key;
+     temp_values[insert_idx] = value;
  
-     /* split point */
-     int split = (order - 1) / 2;
+     int split = (order-1)/2;  /* for ORDER=4, split=1 */
  
-     /* left leaf */
+     /* Refill the original leaf (left) */
      leaf->num_keys = 0;
-     for (i = 0; i < split; i++) {
+     for (i=0; i<split; i++) {
          leaf->keys[i]   = temp_keys[i];
-         leaf->values[i] = temp_vals[i];
+         leaf->values[i] = temp_values[i];
          leaf->num_keys++;
      }
+ 
+     /* New right leaf */
      BPTreeNode* new_leaf = bptree_node_create(order, true);
-     int k;
-     for (k = 0; i < order; i++, k++) {
+     new_leaf->parent = leaf->parent;
+     int k=0;
+     for (; i<order; i++, k++) {
          new_leaf->keys[k]   = temp_keys[i];
-         new_leaf->values[k] = temp_vals[i];
+         new_leaf->values[k] = temp_values[i];
          new_leaf->num_keys++;
      }
      new_leaf->next = leaf->next;
      leaf->next     = new_leaf;
-     new_leaf->parent = leaf->parent;
  
+     /* up_key = first key of new_leaf */
      void* up_key = new_leaf->keys[0];
  
      free(temp_keys);
-     free(temp_vals);
+     free(temp_values);
  
-     /* Insert up_key into parent */
+     /* Insert up_key into parent => scenario 4/5/6 */
      bptree_insert_into_parent(tree, leaf, up_key, new_leaf);
  }
  
- /* Insert up_key from child split into the parent node. */
  static void bptree_insert_into_parent(BPTree* tree, BPTreeNode* left, void* up_key, BPTreeNode* right) {
      BPTreeNode* parent = left->parent;
      if (!parent) {
-         /* SCENARIO 6: create new root */
+         /* SCENARIO 6: new root */
          BPTreeNode* new_root = bptree_node_create(tree->order, false);
          new_root->keys[0]     = up_key;
          new_root->children[0] = left;
@@ -269,14 +250,14 @@
          return;
      }
  
-     /* find where 'left' is in parent's children */
+     /* find position of 'left' in parent->children */
      int idx = 0;
      while (idx <= parent->num_keys && parent->children[idx] != left) {
          idx++;
      }
  
-     if (parent->num_keys < (tree->order - 1)) {
-         /* SCENARIO 4: parent not full */
+     if (parent->num_keys < (tree->order -1)) {
+         /* SCENARIO 4: parent has space */
          insert_into_node(parent, idx, up_key, right);
          right->parent = parent;
      } else {
@@ -284,36 +265,41 @@
          int order = tree->order;
          void** temp_keys = (void**)calloc(order, sizeof(void*));
          BPTreeNode** temp_ch = (BPTreeNode**)calloc(order+1, sizeof(BPTreeNode*));
-         if (!temp_keys || !temp_ch) {
-             free(temp_keys); free(temp_ch);
-             return;
-         }
+ 
          int i, j=0;
-         for (i=0; i <= parent->num_keys; i++, j++) {
+         /* copy children with gap for new child */
+         for (i=0; i<=parent->num_keys; i++, j++) {
              if (j == idx+1) j++;
              temp_ch[j] = parent->children[i];
          }
+ 
+         /* copy keys with gap for new up_key */
          j=0;
-         for (i=0; i < parent->num_keys; i++, j++) {
+         for (i=0; i<parent->num_keys; i++, j++) {
              if (j == idx) j++;
              temp_keys[j] = parent->keys[i];
          }
-         /* add up_key, right */
-         temp_keys[idx]    = up_key;
-         temp_ch[idx+1]    = right;
+         temp_keys[idx]   = up_key;
+         temp_ch[idx+1]   = right;
  
-         int mid = (order - 1)/2; /* fix to ensure left side >= 1 key for order=3 */
+         /* split point => mid = (order-1)/2 for internal node */
+         int mid = (order -1)/2;
+ 
          parent->num_keys = 0;
-         for (i=0; i < mid; i++) {
+         for (i=0; i<mid; i++) {
              parent->children[i] = temp_ch[i];
              parent->keys[i]     = temp_keys[i];
              parent->num_keys++;
          }
          parent->children[i] = temp_ch[i];
+ 
          void* promoted_key = temp_keys[mid];
  
+         /* new sibling node for parent */
          BPTreeNode* new_node = bptree_node_create(order, false);
-         int k = 0;
+         new_node->parent = parent;
+ 
+         int k=0;
          for (i = mid+1; i < order; i++, k++) {
              new_node->children[k] = temp_ch[i];
              new_node->keys[k]     = temp_keys[i];
@@ -326,8 +312,8 @@
              new_node->children[k]->parent = new_node;
          }
          new_node->num_keys = k;
-         new_node->parent   = parent;
  
+         /* fix parent's child->parent pointers */
          for (int c=0; c <= parent->num_keys; c++) {
              if (parent->children[c]) {
                  parent->children[c]->parent = parent;
@@ -337,344 +323,400 @@
          free(temp_keys);
          free(temp_ch);
  
+         /* recursively insert promoted_key up */
          bptree_insert_into_parent(tree, parent, promoted_key, new_node);
      }
  }
  
- /* Insert key+right into a non-full parent at index 'idx'. */
- static void insert_into_node(BPTreeNode* node, int idx, void* key, BPTreeNode* right) {
-     for (int i=node->num_keys; i>idx; i--) {
+ static void insert_into_node(BPTreeNode* node, int index, void* key, BPTreeNode* right) {
+     for (int i=node->num_keys; i>index; i--) {
          node->keys[i]       = node->keys[i-1];
          node->children[i+1] = node->children[i];
      }
-     node->keys[idx]         = key;
-     node->children[idx+1]   = right;
+     node->keys[index]       = key;
+     node->children[index+1] = right;
      node->num_keys++;
  }
  
- /* --------------------------------------------------------------------------
-  * bptree_delete
-  * -------------------------------------------------------------------------- */
+ /* ------------------------- DELETE LOGIC BELOW -------------------------- */
+ static BPTreeNode* find_leaf(BPTree* tree, void* key);
+ static bool key_exists_in_leaf(BPTreeNode* leaf, void* key, int (*cmp)(const void*, const void*));
+ static void remove_key_from_leaf(BPTreeNode* leaf, void* key, int (*cmp)(const void*, const void*));
  
- /* --- Deletion additions --- */
- static bool bptree_delete_entry(BPTree* tree, BPTreeNode* node, void* key, void* value_or_child);
- static void bptree_remove_entry_from_node(BPTreeNode* node, bptree_cmp cmp,
-                                           void* key, void* value_or_child);
- static void bptree_adjust_root(BPTree* tree);
- static BPTreeNode* bptree_get_left_sibling(BPTreeNode* node, int* index_in_parent);
- static BPTreeNode* bptree_get_right_sibling(BPTreeNode* node, int* index_in_parent);
- static void bptree_coalesce_nodes(BPTree* tree, BPTreeNode* left, BPTreeNode* right,
-                                   int parent_key_index);
- static void bptree_redistribute_nodes(BPTree* tree, BPTreeNode* left, BPTreeNode* right,
-                                       int parent_key_index, bool left_is_left);
+ static void handle_underflow(BPTree* tree, BPTreeNode* node);
+ static bool try_redistribute(BPTree* tree, BPTreeNode* node);
+ static void borrow_from_left_leaf(BPTreeNode* node, BPTreeNode* left, int parentIndex, int (*cmp)(const void*, const void*));
+ static void borrow_from_right_leaf(BPTreeNode* node, BPTreeNode* right, int parentIndex, int (*cmp)(const void*, const void*));
+ static void borrow_from_left_internal(BPTreeNode* node, BPTreeNode* left, int parentIndex);
+ static void borrow_from_right_internal(BPTreeNode* node, BPTreeNode* right, int parentIndex);
  
- /**
-  * bptree_delete:
-  *   1) find the leaf containing 'key'
-  *   2) remove the key
-  *   3) if leaf underflows, borrow or merge
-  *   4) possibly merge upward
-  */
- bool bptree_delete(BPTree* tree, void* key) {
-     if (!tree || !tree->root) return false;
-     BPTreeNode* leaf = bptree_find_leaf(tree, key);
-     if (!leaf) return false;
+ static void merge_nodes(BPTree* tree, BPTreeNode* left, BPTreeNode* right, int sepIndex);
+ static void merge_leaves(BPTree* tree, BPTreeNode* leftLeaf, BPTreeNode* rightLeaf, int sepIndex);
+ static void merge_internals(BPTree* tree, BPTreeNode* leftNode, BPTreeNode* rightNode, int sepIndex);
  
-     /* Find position of key in leaf */
-     int idx = -1;
-     for (int i=0; i<leaf->num_keys; i++) {
-         if (tree->cmp(key, leaf->keys[i]) == 0) {
-             idx = i;
-             break;
-         }
-     }
-     if (idx < 0) {
-         /* not found */
-         return false;
-     }
+ static int find_child_index(BPTreeNode* parent, BPTreeNode* child);
+ static int find_key_index_in_node(BPTreeNode* node, void* key, int (*cmp)(const void*, const void*));
+ static bool underflows(BPTree* tree, BPTreeNode* node);
  
-     /* Remove key from leaf */
-     return bptree_delete_entry(tree, leaf, key, leaf->values[idx]);
+ /* -- Corrected free_node: free arrays THEN free(node). -- */
+ static void free_node(BPTreeNode* node) {
+     if (!node) return;
+     if (node->keys)     free(node->keys);
+     if (node->children) free(node->children);
+     if (node->values)   free(node->values);
+     free(node);
  }
  
- /* bptree_delete_entry:
-  *    1) remove key and pointer from node
-  *    2) if node is root, call adjust_root if empty
-  *    3) if node underflows, borrow or merge
+ /*
+  * bptree_delete: returns true if 'key' found & removed, else false
   */
- static bool bptree_delete_entry(BPTree* tree, BPTreeNode* node, void* key, void* value_or_child) {
-     /* remove key and pointer from node */
-     bptree_remove_entry_from_node(node, tree->cmp, key, value_or_child);
+ bool bptree_delete(BPTree* tree, void* key) {
+     if (!tree || !tree->root) {
+         return false;
+     }
+     /* 1. Find leaf node where 'key' would reside. */
+     BPTreeNode* leaf = find_leaf(tree, key);
+     if (!leaf) {
+         return false;
+     }
+     /* 2. Check if key actually exists in leaf. */
+     if (!key_exists_in_leaf(leaf, key, tree->cmp)) {
+         return false;
+     }
+     /* 3. Remove key from leaf. */
+     remove_key_from_leaf(leaf, key, tree->cmp);
  
-     /* if node == root, check if root is empty or needs adjusting */
-     if (node == tree->root) {
-         bptree_adjust_root(tree);
-         return true;
+     /* 4. Check underflow. */
+     if (underflows(tree, leaf)) {
+         handle_underflow(tree, leaf);
      }
  
-     /* check min # of keys required */
-     int order = tree->order;
-     int min_keys = (order - 1) / 2;  /* for leaves: (m-1)/2. For internal: ~ (m/2)-1. */
-     if (!node->is_leaf) {
-         /* internal node typically requires at least (order/2) children => (order/2)-1 keys */
-         /* e.g. for order=3 => at least 1 key. So min_keys is the same formula, but 
-            you might do an extra check if you want a distinct formula for internal. */
-         min_keys = (order/2) - 1;
-         if (min_keys < 1) min_keys=1; /* in case order=3 => (3/2)-1=0.5 => 0 */
-     }
- 
-     /* if node not underflow, done */
-     if (node->num_keys >= min_keys) {
-         return true;
-     }
- 
-     /* otherwise, fix underflow by borrow or merge. */
-     BPTreeNode* parent = node->parent;
-     if (!parent) {
-         /* if parent is NULL but node != root => edge case, typically doesn't happen */
-         return true;
-     }
- 
-     /* find index_in_parent */
-     int index_in_parent = -1;
-     for (int i=0; i <= parent->num_keys; i++) {
-         if (parent->children[i] == node) {
-             index_in_parent = i;
-             break;
+     /* 5. Special root case. */
+     BPTreeNode* root = tree->root;
+     if (!root->is_leaf && root->num_keys == 0) {
+         BPTreeNode* newRoot = root->children[0];
+         if (newRoot) {
+             newRoot->parent = NULL;
          }
-     }
- 
-     /* siblings */
-     BPTreeNode* left_sib  = (index_in_parent>0) ? parent->children[index_in_parent - 1] : NULL;
-     BPTreeNode* right_sib = (index_in_parent<parent->num_keys) ? parent->children[index_in_parent + 1] : NULL;
- 
-     /* Try borrow from left or right sibling if possible */
-     if (left_sib && left_sib->num_keys > min_keys) {
-         bptree_redistribute_nodes(tree, left_sib, node, index_in_parent-1, true);
-     }
-     else if (right_sib && right_sib->num_keys > min_keys) {
-         bptree_redistribute_nodes(tree, node, right_sib, index_in_parent, false);
-     }
-     else {
-         /* merge with sibling */
-         if (left_sib) {
-             bptree_coalesce_nodes(tree, left_sib, node, index_in_parent-1);
-         } else if (right_sib) {
-             bptree_coalesce_nodes(tree, node, right_sib, index_in_parent);
-         }
+         tree->root = newRoot;
+         free_node(root);
      }
      return true;
  }
  
- /* Remove key & pointer from node. Does not fix underflow. */
- static void bptree_remove_entry_from_node(BPTreeNode* node, bptree_cmp cmp,
-                                           void* key, void* value_or_child) {
-     int i, found_key=-1;
-     /* find key in node->keys */
-     for (i=0; i<node->num_keys; i++) {
-         if (cmp(key, node->keys[i]) == 0) {
-             found_key = i;
+ /* -- find_leaf for deletion -- */
+ static BPTreeNode* find_leaf(BPTree* tree, void* key) {
+     if (!tree || !tree->root) {
+         return NULL;
+     }
+     BPTreeNode* current = tree->root;
+     while (!current->is_leaf) {
+         int i = 0;
+         while (i < current->num_keys && tree->cmp(key, current->keys[i]) >= 0) {
+             i++;
+         }
+         current = current->children[i];
+     }
+     return current;
+ }
+ 
+ static bool key_exists_in_leaf(BPTreeNode* leaf, void* key, int (*cmp)(const void*, const void*)) {
+     for (int i = 0; i < leaf->num_keys; i++) {
+         if (cmp(key, leaf->keys[i]) == 0) {
+             return true;
+         }
+     }
+     return false;
+ }
+ 
+ static void remove_key_from_leaf(BPTreeNode* leaf, void* key, int (*cmp)(const void*, const void*)) {
+     int pos = -1;
+     for (int i = 0; i < leaf->num_keys; i++) {
+         if (cmp(key, leaf->keys[i]) == 0) {
+             pos = i;
              break;
          }
      }
-     if (found_key>=0) {
-         /* shift keys left from found_key */
-         for (int j=found_key; j<node->num_keys-1; j++) {
-             node->keys[j] = node->keys[j+1];
-             if (node->is_leaf) {
-                 node->values[j] = node->values[j+1];
-             }
-         }
-         /* clear last slot */
-         node->keys[node->num_keys - 1] = NULL;
+     if (pos == -1) return; // shouldn't happen
+     /* Shift left to fill gap */
+     for (int i = pos; i < leaf->num_keys - 1; i++) {
+         leaf->keys[i]   = leaf->keys[i + 1];
+         leaf->values[i] = leaf->values[i + 1];
+     }
+     leaf->num_keys--;
+ }
+ 
+ /* -------------------------- Handle Underflow ------------------------------ */
+ static void handle_underflow(BPTree* tree, BPTreeNode* node) {
+     if (!node->parent) {
+         // If node is root & alone, allow underflow
+         return;
+     }
+     // Try to borrow
+     if (try_redistribute(tree, node)) {
+         return;
+     }
+     // Else merge
+     int parentIndex = find_child_index(node->parent, node);
+     BPTreeNode* leftSibling  = (parentIndex > 0) ? node->parent->children[parentIndex - 1] : NULL;
+     BPTreeNode* rightSibling = (parentIndex < node->parent->num_keys)
+                                ? node->parent->children[parentIndex + 1]
+                                : NULL;
+ 
+     if (leftSibling) {
+         merge_nodes(tree, leftSibling, node, parentIndex - 1);
+     } else if (rightSibling) {
+         merge_nodes(tree, node, rightSibling, parentIndex);
+     }
+ 
+     // After merging, check parent underflow
+     if (node->parent && underflows(tree, node->parent)) {
+         handle_underflow(tree, node->parent);
+     }
+ }
+ 
+ /* Attempt to borrow from left/right sibling */
+ static bool try_redistribute(BPTree* tree, BPTreeNode* node) {
+     int min_keys = ((tree->order + 1) / 2) - 1; // for order=4 => 1
+     BPTreeNode* parent = node->parent;
+     int parentIndex = find_child_index(parent, node);
+ 
+     BPTreeNode* leftSibling  = (parentIndex > 0) ? parent->children[parentIndex - 1] : NULL;
+     BPTreeNode* rightSibling = (parentIndex < parent->num_keys)
+                                ? parent->children[parentIndex + 1]
+                                : NULL;
+ 
+     // Borrow from left
+     if (leftSibling && leftSibling->num_keys > min_keys) {
          if (node->is_leaf) {
-             node->values[node->num_keys - 1] = NULL;
-         }
-         node->num_keys--;
-     }
- 
-     /* if internal node, remove child pointer if matches 'value_or_child' */
-     if (!node->is_leaf) {
-         int c_idx=-1;
-         for (i=0; i<=node->num_keys; i++) {
-             if (node->children[i] == (BPTreeNode*)value_or_child) {
-                 c_idx = i; break;
-             }
-         }
-         if (c_idx>=0) {
-             for (int j=c_idx; j<node->num_keys+1; j++) {
-                 node->children[j] = node->children[j+1];
-             }
-             node->children[node->num_keys+1] = NULL;
-         }
-     }
- }
- 
- /* adjust_root: if root has 0 keys, remove it or replace with child. */
- static void bptree_adjust_root(BPTree* tree) {
-     BPTreeNode* root = tree->root;
-     if (!root) return;
-     if (root->num_keys>0) return; /* no adjustment needed */
- 
-     /* If it's a leaf & 0 keys => entire tree is empty */
-     if (root->is_leaf) {
-         tree->root = NULL;
-         free(root->keys);
-         free(root->values);
-         free(root->children);
-         free(root);
-     } else {
-         /* otherwise, root is internal but has no keys => make its only child new root */
-         BPTreeNode* child = root->children[0];
-         child->parent = NULL;
-         tree->root = child;
-         /* free old root */
-         free(root->keys);
-         free(root->children);
-         free(root);
-     }
- }
- 
- /* coalesce_nodes: merges 'right' into 'left' if left is the preceding sibling. */
- static void bptree_coalesce_nodes(BPTree* tree, BPTreeNode* left, BPTreeNode* right,
-                                   int parent_key_index) {
-     BPTreeNode* parent = left->parent;
-     /* For B+ tree:
-      * If internal, we bring down parent->keys[parent_key_index].
-      * Merge right's keys+children into left.
-      * Then remove parent->keys[parent_key_index].
-      * Then fix parent->children, etc.
-      */
-     if (!left->is_leaf) {
-         /* Internal node merge:
-          * left->keys[left->num_keys] = parent->keys[parent_key_index]
-          * then copy right->keys into left
-          */
-         // bring down the parent's separator
-         left->keys[left->num_keys] = parent->keys[parent_key_index];
-         left->num_keys++;
-         // copy right's keys & children
-         for (int i=0; i<right->num_keys; i++) {
-             left->keys[left->num_keys] = right->keys[i];
-             left->children[left->num_keys] = right->children[i];
-             if (left->children[left->num_keys]) {
-                 left->children[left->num_keys]->parent = left;
-             }
-             left->num_keys++;
-         }
-         // last child
-         left->children[left->num_keys] = right->children[right->num_keys];
-         if (left->children[left->num_keys]) {
-             left->children[left->num_keys]->parent = left;
-         }
-     } else {
-         /* Leaf merge: copy right's key/values to the end of left */
-         for (int i=0; i<right->num_keys; i++) {
-             left->keys[left->num_keys]   = right->keys[i];
-             left->values[left->num_keys] = right->values[i];
-             left->num_keys++;
-         }
-         left->next = right->next;
-     }
- 
-     /* now remove parent's key at parent_key_index, and child's pointer */
-     void* key_to_remove = parent->keys[parent_key_index];
-     bptree_delete_entry(tree, parent, key_to_remove, right);
-     /* free the right node */
-     free(right->keys);
-     if (right->is_leaf) free(right->values);
-     free(right->children);
-     free(right);
- }
- 
- /* redistribute_nodes: move 1 key from left sibling to right or vice versa */
- static void bptree_redistribute_nodes(BPTree* tree, BPTreeNode* left, BPTreeNode* right,
-                                       int parent_key_index, bool left_is_left) {
-     BPTreeNode* parent = left->parent;
-     /* For internal node:
-      *  - if we move from left->right, parent's key in [parent_key_index] moves down to 'right',
-      *    left->last key moves up to parent.
-      *  - if leaf, we just shift key/value; parent's key is updated to reflect new boundary.
-      */
-     if (!left->is_leaf) {
-         if (left_is_left) {
-             /* shift right node right by 1 */
-             for (int i=right->num_keys; i>0; i--) {
-                 right->keys[i]     = right->keys[i-1];
-                 right->children[i+1] = right->children[i];
-             }
-             right->children[1] = right->children[0];
-             /* parent's separator goes down to right->keys[0] */
-             right->keys[0] = parent->keys[parent_key_index];
-             right->children[0] = left->children[left->num_keys];
-             if (right->children[0]) {
-                 right->children[0]->parent = right;
-             }
-             right->num_keys++;
- 
-             /* left->last key moves up to parent->keys[parent_key_index] */
-             parent->keys[parent_key_index] = left->keys[left->num_keys -1];
-             left->keys[left->num_keys -1] = NULL;
-             left->children[left->num_keys] = NULL;
-             left->num_keys--;
+             borrow_from_left_leaf(node, leftSibling, parentIndex, tree->cmp);
          } else {
-             /* right->left shift */
-             left->keys[left->num_keys] = parent->keys[parent_key_index];
-             left->children[left->num_keys+1] = right->children[0];
-             if (left->children[left->num_keys+1]) {
-                 left->children[left->num_keys+1]->parent = left;
-             }
-             left->num_keys++;
- 
-             parent->keys[parent_key_index] = right->keys[0];
-             /* shift right->keys left */
-             for (int i=0; i<right->num_keys-1; i++) {
-                 right->keys[i]       = right->keys[i+1];
-                 right->children[i]   = right->children[i+1];
-             }
-             right->children[right->num_keys-1] = right->children[right->num_keys];
-             right->keys[right->num_keys-1]     = NULL;
-             right->children[right->num_keys]   = NULL;
-             right->num_keys--;
+             borrow_from_left_internal(node, leftSibling, parentIndex);
          }
-     } else {
-         /* leaf nodes redistribution */
-         if (left_is_left) {
-             /* move first key of right -> end of left */
-             left->keys[left->num_keys]   = right->keys[0];
-             left->values[left->num_keys] = right->values[0];
-             left->num_keys++;
-             /* parent's key is updated to right->keys[1] */
-             parent->keys[parent_key_index] = right->keys[1];
-             /* shift right left by 1 */
-             for (int i=0; i<right->num_keys-1; i++) {
-                 right->keys[i]   = right->keys[i+1];
-                 right->values[i] = right->values[i+1];
-             }
-             right->keys[right->num_keys-1]   = NULL;
-             right->values[right->num_keys-1] = NULL;
-             right->num_keys--;
+         return true;
+     }
+     // Borrow from right
+     if (rightSibling && rightSibling->num_keys > min_keys) {
+         if (node->is_leaf) {
+             borrow_from_right_leaf(node, rightSibling, parentIndex + 1, tree->cmp);
          } else {
-             /* move last key of left to front of right */
-             for (int i=right->num_keys; i>0; i--) {
-                 right->keys[i]   = right->keys[i-1];
-                 right->values[i] = right->values[i-1];
-             }
-             right->keys[0]   = left->keys[left->num_keys-1];
-             right->values[0] = left->values[left->num_keys-1];
-             parent->keys[parent_key_index] = right->keys[0];
+             borrow_from_right_internal(node, rightSibling, parentIndex + 1);
+         }
+         return true;
+     }
+     return false;
+ }
  
-             left->keys[left->num_keys-1]   = NULL;
-             left->values[left->num_keys-1] = NULL;
-             left->num_keys++;
-             right->num_keys++;
-             left->num_keys--;
+ /* ------------------------- Borrowing Functions -------------------------- */
+ static void borrow_from_left_leaf(
+     BPTreeNode* node, BPTreeNode* left, int parentIndex,
+     int (*cmp)(const void*, const void*)
+ ) {
+     printf("Borrowing from left leaf\n");
+     // Move last key of left -> front of node
+     int last = left->num_keys - 1;
+     void* borrowedKey = left->keys[last];
+     void* borrowedVal = left->values[last];
+ 
+     // Shift node's keys right
+     for (int i = node->num_keys; i > 0; i--) {
+         node->keys[i]   = node->keys[i - 1];
+         node->values[i] = node->values[i - 1];
+     }
+     node->keys[0]   = borrowedKey;
+     node->values[0] = borrowedVal;
+ 
+     left->num_keys--;
+     node->num_keys++;
+ 
+     // Update parent's separator
+     node->parent->keys[parentIndex - 1] = node->keys[0];
+ }
+ 
+ static void borrow_from_right_leaf(
+     BPTreeNode* node, BPTreeNode* right, int parentIndex,
+     int (*cmp)(const void*, const void*)
+ ) {
+     printf("Borrowing from right leaf\n");
+     // Move first key of right -> end of node
+     void* borrowedKey = right->keys[0];
+     void* borrowedVal = right->values[0];
+ 
+     node->keys[node->num_keys]   = borrowedKey;
+     node->values[node->num_keys] = borrowedVal;
+     node->num_keys++;
+ 
+     // Shift right->keys left
+     for (int i=0; i< right->num_keys -1; i++) {
+         right->keys[i]   = right->keys[i+1];
+         right->values[i] = right->values[i+1];
+     }
+     right->num_keys--;
+ 
+     // Update parent's separator
+     node->parent->keys[parentIndex - 1] = right->keys[0];
+ }
+ 
+ /* Borrow from left internal node */
+ static void borrow_from_left_internal(BPTreeNode* node, BPTreeNode* left, int parentIndex) {
+     BPTreeNode* parent = node->parent;
+     // Shift node keys/children right
+     for (int i=node->num_keys; i>0; i--) {
+         node->keys[i] = node->keys[i-1];
+         node->children[i+1] = node->children[i];
+     }
+     node->children[1] = node->children[0];
+ 
+     // parent's separator goes to node->keys[0]
+     node->keys[0] = parent->keys[parentIndex - 1];
+     node->children[0] = left->children[left->num_keys];
+     if (node->children[0]) {
+         node->children[0]->parent = node;
+     }
+     node->num_keys++;
+ 
+     // parent's separator replaced by left->keys[last]
+     parent->keys[parentIndex - 1] = left->keys[left->num_keys -1];
+ 
+     // left loses one key/child
+     left->num_keys--;
+     left->children[left->num_keys+1] = NULL;
+ }
+ 
+ static void borrow_from_right_internal(BPTreeNode* node, BPTreeNode* right, int parentIndex) {
+     BPTreeNode* parent = node->parent;
+     // node gets parent's separator
+     node->keys[node->num_keys] = parent->keys[parentIndex - 1];
+     node->children[node->num_keys + 1] = right->children[0];
+     if (node->children[node->num_keys + 1]) {
+         node->children[node->num_keys + 1]->parent = node;
+     }
+     node->num_keys++;
+ 
+     // parent's separator becomes right->keys[0]
+     parent->keys[parentIndex -1] = right->keys[0];
+ 
+     // shift right->keys/children left
+     for (int i=0; i< right->num_keys -1; i++) {
+         right->keys[i] = right->keys[i+1];
+         right->children[i] = right->children[i+1];
+     }
+     right->children[right->num_keys -1] = right->children[right->num_keys];
+     right->num_keys--;
+ }
+ 
+ /* --------------------------- Merging Functions --------------------------- */
+ static void merge_nodes(BPTree* tree, BPTreeNode* left, BPTreeNode* right, int sepIndex) {
+    if (left->is_leaf && right->is_leaf) {
+         merge_leaves(tree, left, right, sepIndex);
+     } else {
+         merge_internals(tree, left, right, sepIndex);
+     }
+ }
+ 
+static void merge_leaves(BPTree* tree, BPTreeNode* leftLeaf, BPTreeNode* rightLeaf, int sepIndex)
+{
+    printf("Merging leaves\n");
+    BPTreeNode* parent = leftLeaf->parent;
+
+    // 1) Append all keys/values from rightLeaf into leftLeaf
+    for (int i = 0; i < rightLeaf->num_keys; i++) {
+        leftLeaf->keys[leftLeaf->num_keys + i]   = rightLeaf->keys[i];
+        leftLeaf->values[leftLeaf->num_keys + i] = rightLeaf->values[i];
+    }
+    leftLeaf->num_keys += rightLeaf->num_keys;
+
+    // 2) Update leaf-link pointer
+    leftLeaf->next = rightLeaf->next;
+
+    // 3) Remove the separator key in the parent
+    //    and the rightLeaf pointer in 'children[]'.
+    //    This is done by shifting everything to the left.
+    for (int i = sepIndex; i < parent->num_keys - 1; i++) {
+        parent->keys[i]       = parent->keys[i + 1];
+        parent->children[i + 1] = parent->children[i + 2];
+    }
+
+    // 4) Clear out the old last slot (since we shifted left).
+    parent->keys[parent->num_keys - 1]     = NULL;
+    parent->children[parent->num_keys]     = NULL;
+
+    // 5) Parent now has one fewer key
+    parent->num_keys--;
+
+    // 6) Free the entire rightLeaf node
+    free_node(rightLeaf);
+}
+ 
+ /* Merge internal nodes */
+ static void merge_internals(BPTree* tree, BPTreeNode* leftNode, BPTreeNode* rightNode, int sepIndex) {
+     printf("Merging internal nodes\n"); 
+
+     BPTreeNode* parent = leftNode->parent;
+     void* sepKey = parent->keys[sepIndex];
+ 
+     // sepKey goes into leftNode
+     leftNode->keys[leftNode->num_keys] = sepKey;
+     leftNode->num_keys++;
+ 
+     // Copy rightNode's keys/children
+     int offset = leftNode->num_keys;
+     for (int i=0; i<rightNode->num_keys; i++) {
+         leftNode->keys[offset + i] = rightNode->keys[i];
+     }
+     for (int i=0; i <= rightNode->num_keys; i++) {
+         leftNode->children[offset + i] = rightNode->children[i];
+         if (rightNode->children[i]) {
+             rightNode->children[i]->parent = leftNode;
          }
      }
+     leftNode->num_keys += rightNode->num_keys;
+ 
+     // Remove sepKey & child pointer from parent
+     for (int i=sepIndex; i<parent->num_keys-1; i++) {
+         parent->keys[i]       = parent->keys[i+1];
+         parent->children[i+1] = parent->children[i+2];
+     }
+     // Clear the now-unused slot
+     parent->keys[parent->num_keys -1] = NULL;
+     parent->children[parent->num_keys] = NULL;
+ 
+     parent->num_keys--;
+ 
+     free_node(rightNode);
+ }
+ 
+ /* -------------------------- Utility Functions --------------------------- */
+ static int find_child_index(BPTreeNode* parent, BPTreeNode* child) {
+     for (int i=0; i <= parent->num_keys; i++) {
+         if (parent->children[i] == child) {
+             return i;
+         }
+     }
+     return -1; 
+ }
+ 
+ static int find_key_index_in_node(BPTreeNode* node, void* key, int (*cmp)(const void*, const void*)) {
+     for (int i=0; i<node->num_keys; i++) {
+         int c = cmp(key, node->keys[i]);
+         if (c == 0) return i;
+         if (c < 0) return i; 
+     }
+     return node->num_keys;
+ }
+ 
+ /* Underflows if node->num_keys < MIN_KEYS (except root) */
+ static bool underflows(BPTree* tree, BPTreeNode* node) {
+     if (!node->parent) {
+         // Root may have fewer
+         return false;
+     }
+     int min_keys = ((tree->order + 1)/2) -1; // For ORDER=4 => 1
+     return (node->num_keys < min_keys);
  }
  
  /* --------------------------------------------------------------------------
-  * bptree_print: simple BFS for debugging
+  * bptree_print: BFS-level debug
   * -------------------------------------------------------------------------- */
  typedef struct QNode {
      BPTreeNode* node;
@@ -682,22 +724,20 @@
  } QNode;
  
  static void enqueue(QNode** head, BPTreeNode* node) {
-     QNode* qn = (QNode*)malloc(sizeof(QNode));
-     qn->node = node;
-     qn->next = NULL;
+     QNode* nq = (QNode*)malloc(sizeof(QNode));
+     nq->node = node;
+     nq->next = NULL;
      if (!(*head)) {
-         *head = qn;
+         *head = nq;
          return;
      }
      QNode* tmp = *head;
-     while (tmp->next) {
-         tmp = tmp->next;
-     }
-     tmp->next = qn;
+     while (tmp->next) tmp = tmp->next;
+     tmp->next = nq;
  }
  
  static BPTreeNode* dequeue(QNode** head) {
-     if (!(*head)) return NULL;
+     if(!(*head)) return NULL;
      QNode* front = *head;
      BPTreeNode* node = front->node;
      *head = front->next;
@@ -710,25 +750,26 @@
          printf("(Empty B+ Tree)\n");
          return;
      }
+     printf("B+ Tree (order=%d):\n", tree->order);
      QNode* queue = NULL;
      enqueue(&queue, tree->root);
  
      BPTreeNode* last_in_level = tree->root;
      BPTreeNode* next_last_in_level = NULL;
-     printf("B+ Tree (order=%d):\n", tree->order);
  
      while (queue) {
          BPTreeNode* node = dequeue(&queue);
-         /* Print node's keys as pointer addresses or interpret them if you know they're int* */
+         /* Print node's keys (assuming they're int*). */
          printf("[");
-         for (int i = 0; i < node->num_keys; i++) {
-             if (i > 0) printf(" ");
-             printf("%p", node->keys[i]);
+         for (int i=0; i<node->num_keys; i++){
+             if (i>0) printf(" ");
+             int keyval = *(int*)node->keys[i];
+             printf("%d", keyval);
          }
          printf("] ");
  
          if (!node->is_leaf) {
-             for (int i = 0; i <= node->num_keys; i++) {
+             for (int i=0; i<=node->num_keys; i++){
                  if (node->children[i]) {
                      enqueue(&queue, node->children[i]);
                      next_last_in_level = node->children[i];

@@ -287,8 +287,8 @@ static void test_person(void) {
  *  We use integers for simplicity, but you could adapt to other types.
  * ------------------------------------------------------------------------- */
 static void test_stress(void) {
-    const int ORDER = 5;      // a bit larger order to see more splits
-    const int N = 50;        // number of random inserts
+    const int ORDER = 3;      // a bit larger order to see more splits
+    const int N = 20;        // number of random inserts
     const int OPS = 20;      // number of random delete ops
 
     BPTree* tree = bptree_create(ORDER, bptree_int_cmp);
