@@ -345,17 +345,16 @@
  
  static void handle_underflow(BPTree* tree, BPTreeNode* node);
  static bool try_redistribute(BPTree* tree, BPTreeNode* node);
- static void borrow_from_left_leaf(BPTreeNode* node, BPTreeNode* left, int parentIndex, int (*cmp)(const void*, const void*));
- static void borrow_from_right_leaf(BPTreeNode* node, BPTreeNode* right, int parentIndex, int (*cmp)(const void*, const void*));
+ static void borrow_from_left_leaf(BPTreeNode* node, BPTreeNode* left, int parentIndex);
+ static void borrow_from_right_leaf(BPTreeNode* node, BPTreeNode* right, int parentIndex);
  static void borrow_from_left_internal(BPTreeNode* node, BPTreeNode* left, int parentIndex);
  static void borrow_from_right_internal(BPTreeNode* node, BPTreeNode* right, int parentIndex);
  
- static void merge_nodes(BPTree* tree, BPTreeNode* left, BPTreeNode* right, int sepIndex);
- static void merge_leaves(BPTree* tree, BPTreeNode* leftLeaf, BPTreeNode* rightLeaf, int sepIndex);
- static void merge_internals(BPTree* tree, BPTreeNode* leftNode, BPTreeNode* rightNode, int sepIndex);
+ static void merge_nodes(BPTreeNode* left, BPTreeNode* right, int sepIndex);
+ static void merge_leaves(BPTreeNode* leftLeaf, BPTreeNode* rightLeaf, int sepIndex);
+ static void merge_internals(BPTreeNode* leftNode, BPTreeNode* rightNode, int sepIndex);
  
  static int find_child_index(BPTreeNode* parent, BPTreeNode* child);
- static int find_key_index_in_node(BPTreeNode* node, void* key, int (*cmp)(const void*, const void*));
  static bool underflows(BPTree* tree, BPTreeNode* node);
  
  /* -- Corrected free_node: free arrays THEN free(node). -- */
@@ -464,9 +463,9 @@
                                 : NULL;
  
      if (leftSibling) {
-         merge_nodes(tree, leftSibling, node, parentIndex - 1);
+         merge_nodes(leftSibling, node, parentIndex - 1);
      } else if (rightSibling) {
-         merge_nodes(tree, node, rightSibling, parentIndex);
+         merge_nodes(node, rightSibling, parentIndex);
      }
  
      // After merging, check parent underflow
@@ -489,7 +488,7 @@
      // Borrow from left
      if (leftSibling && leftSibling->num_keys > min_keys) {
          if (node->is_leaf) {
-             borrow_from_left_leaf(node, leftSibling, parentIndex, tree->cmp);
+             borrow_from_left_leaf(node, leftSibling, parentIndex);
          } else {
              borrow_from_left_internal(node, leftSibling, parentIndex);
          }
@@ -498,7 +497,7 @@
      // Borrow from right
      if (rightSibling && rightSibling->num_keys > min_keys) {
          if (node->is_leaf) {
-             borrow_from_right_leaf(node, rightSibling, parentIndex + 1, tree->cmp);
+             borrow_from_right_leaf(node, rightSibling, parentIndex + 1);
          } else {
              borrow_from_right_internal(node, rightSibling, parentIndex + 1);
          }
@@ -508,10 +507,8 @@
  }
  
  /* ------------------------- Borrowing Functions -------------------------- */
- static void borrow_from_left_leaf(
-     BPTreeNode* node, BPTreeNode* left, int parentIndex,
-     int (*cmp)(const void*, const void*)
- ) {
+ static void borrow_from_left_leaf(BPTreeNode* node, BPTreeNode* left, int parentIndex) 
+ {
      printf("Borrowing from left leaf\n");
      // Move last key of left -> front of node
      int last = left->num_keys - 1;
@@ -533,10 +530,8 @@
      node->parent->keys[parentIndex - 1] = node->keys[0];
  }
  
- static void borrow_from_right_leaf(
-     BPTreeNode* node, BPTreeNode* right, int parentIndex,
-     int (*cmp)(const void*, const void*)
- ) {
+ static void borrow_from_right_leaf(BPTreeNode* node, BPTreeNode* right, int parentIndex) 
+ {
      printf("Borrowing from right leaf\n");
      // Move first key of right -> end of node
      void* borrowedKey = right->keys[0];
@@ -606,17 +601,16 @@
  }
  
  /* --------------------------- Merging Functions --------------------------- */
- static void merge_nodes(BPTree* tree, BPTreeNode* left, BPTreeNode* right, int sepIndex) {
+ static void merge_nodes(BPTreeNode* left, BPTreeNode* right, int sepIndex) {
     if (left->is_leaf && right->is_leaf) {
-         merge_leaves(tree, left, right, sepIndex);
+         merge_leaves(left, right, sepIndex);
      } else {
-         merge_internals(tree, left, right, sepIndex);
+         merge_internals(left, right, sepIndex);
      }
  }
  
-static void merge_leaves(BPTree* tree, BPTreeNode* leftLeaf, BPTreeNode* rightLeaf, int sepIndex)
+static void merge_leaves(BPTreeNode* leftLeaf, BPTreeNode* rightLeaf, int sepIndex)
 {
-    printf("Merging leaves\n");
     BPTreeNode* parent = leftLeaf->parent;
 
     // 1) Append all keys/values from rightLeaf into leftLeaf
@@ -649,8 +643,7 @@ static void merge_leaves(BPTree* tree, BPTreeNode* leftLeaf, BPTreeNode* rightLe
 }
  
  /* Merge internal nodes */
- static void merge_internals(BPTree* tree, BPTreeNode* leftNode, BPTreeNode* rightNode, int sepIndex) {
-     printf("Merging internal nodes\n"); 
+ static void merge_internals(BPTreeNode* leftNode, BPTreeNode* rightNode, int sepIndex) {
 
      BPTreeNode* parent = leftNode->parent;
      void* sepKey = parent->keys[sepIndex];
@@ -696,14 +689,14 @@ static void merge_leaves(BPTree* tree, BPTreeNode* leftLeaf, BPTreeNode* rightLe
      return -1; 
  }
  
- static int find_key_index_in_node(BPTreeNode* node, void* key, int (*cmp)(const void*, const void*)) {
-     for (int i=0; i<node->num_keys; i++) {
-         int c = cmp(key, node->keys[i]);
-         if (c == 0) return i;
-         if (c < 0) return i; 
-     }
-     return node->num_keys;
- }
+//  static int find_key_index_in_node(BPTreeNode* node, void* key, int (*cmp)(const void*, const void*)) {
+//      for (int i=0; i<node->num_keys; i++) {
+//          int c = cmp(key, node->keys[i]);
+//          if (c == 0) return i;
+//          if (c < 0) return i; 
+//      }
+//      return node->num_keys;
+//  }
  
  /* Underflows if node->num_keys < MIN_KEYS (except root) */
  static bool underflows(BPTree* tree, BPTreeNode* node) {
@@ -785,4 +778,3 @@ static void merge_leaves(BPTree* tree, BPTreeNode* leftLeaf, BPTreeNode* rightLe
      }
      printf("\n");
  }
- 
