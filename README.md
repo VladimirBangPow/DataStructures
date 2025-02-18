@@ -573,7 +573,7 @@ Time Complexity: 𝑂(log𝑛) similarly to insertion.
 ![B+15](diagrams/B+15.png "B+15")
 
 
-
+NOTE: Works on GCC but not CLANG compiler. This is definitely a bad bug, but I can't really fix the compiler. I will try and look for a workaround in the code, but no promises. Just use GCC for now.
 
 ## Heap/Priority Queue
 
