@@ -15,24 +15,38 @@ typedef int (*bptree_cmp)(const void* a, const void* b);
 /* Forward declaration of BPTreeNode. */
 typedef struct BPTreeNode BPTreeNode;
 
-/* B+ tree structure. */
+/* --------------------------------------------------------------------------
+ * B+ Tree structure
+ *   - order = maximum number of children a node can have
+ *             (so max keys in a node is order - 1)
+ *   - root  = pointer to the root node
+ *   - cmp   = comparison function for keys
+ * -------------------------------------------------------------------------- */
 typedef struct BPTree {
-    BPTreeNode* root;  // root node of the B+ tree
-    int         order; // maximum # of children per internal node
-    bptree_cmp  cmp;   // comparator for keys
+    int        order;
+    BPTreeNode* root;
+    bptree_cmp cmp;
 } BPTree;
 
-/* B+ tree node structure. */
-struct BPTreeNode {
-    bool  is_leaf;       // true if leaf node, false if internal node
-    int   num_keys;      // number of valid keys in this node
-    void** keys;         // array of key pointers (size = order - 1)
-    void** values;       // array of value pointers (only used if is_leaf == true)
-    
-    BPTreeNode** children; // children[i] => pointer to the i-th child (size = order)
-    BPTreeNode*  next;     // leaf-link pointer (for leaves only)
-    BPTreeNode*  parent;   // pointer to the parent node (used for merges/redistributions)
-};
+/* --------------------------------------------------------------------------
+ * B+ Tree Node structure
+ *   - is_leaf = true if node is a leaf
+ *   - num_keys = current number of keys stored
+ *   - keys     = array of key pointers
+ *   - values   = array of value pointers (only used if leaf)
+ *   - children = array of child pointers (B+ internal or leaf links)
+ *   - next     = pointer to next leaf (if leaf)
+ *   - parent   = pointer to parent node
+ * -------------------------------------------------------------------------- */
+typedef struct BPTreeNode {
+    bool            is_leaf;
+    int             num_keys;
+    void**          keys;
+    void**          values;   /* only used if is_leaf == true */
+    struct BPTreeNode** children;
+    struct BPTreeNode*  parent;
+    struct BPTreeNode*  next;
+} BPTreeNode;
 
 /**
  * Create an empty B+ tree with the specified order and comparator.
