@@ -466,11 +466,7 @@ The final statement is of incredible importance:
 ![BTree8](diagrams/BTree8(2).png "BTree8")
 ![BTree9](diagrams/BTree9(2).png "BTree9")
 ![BTree10](diagrams/BTree10(2).png "BTree10")
-![BTree11](diagrams/BTree11.png "BTree11")
-![BTree12](diagrams/BTree12.png "BTree12")
-![BTree13](diagrams/BTree13.png "BTree13")
-![BTree14](diagrams/BTree14.png "BTree14")
-![BTree15](diagrams/BTree15.png "BTree15")
+
 
 ## B+ Tree (often used in databases and filesystems)
 A B+ tree is a specialized data structure often used in databases and filesystems to maintain sorted data in a way that supports efficient insertion, deletion, and lookup operations (especially for range queries). It is an extension of the B-tree data structure, with some key differences that make it particularly well-suited for disk-based or other secondary-storage-based indexing.
