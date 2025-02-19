@@ -578,13 +578,16 @@ NOTE: Works on GCC but not CLANG compiler. This is definitely a bad bug, but I c
 A specialized tree-based structure (often represented implicitly via an array) where the parent’s key is either always larger (max-heap) or smaller (min-heap) than its children.
 Supports efficient retrieval of min/max in O(1) and insertion/deletion in O(log n).
 
+### Pushing
 ![Pq1](diagrams/Pq1.png "Pq1")
 ![Pq2](diagrams/Pq2.png "Pq2")
 ![Pq3](diagrams/Pq3.png "Pq3")
 ![Pq4](diagrams/Pq4.png "Pq4")
 ![Pq5](diagrams/Pq5.png "Pq5")
 
-
+### Popping
+![Pq6](diagrams/Pq6.png "Pq6")
+![Pq7](diagrams/Pq7.png "Pq7")
 
 ## Trie (Prefix Tree)
 
