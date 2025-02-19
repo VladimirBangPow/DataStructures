@@ -4,24 +4,21 @@
 #include <time.h>
 #include <assert.h>
 
-#include "test_pq.h"
 #include "pq.h"
 
-/**
- * Comparator for integers (min-heap).
- * Return < 0 if int a < int b,
- *         0 if a == b,
- *         > 0 if a > b.
+/* 
+ * =============== HELPER COMPARATORS ===============
+ * These comparison functions interpret "a < b" as negative,
+ * "a == b" as 0, "a > b" as positive. 
+ * Perfect for min-heap usage by default. 
+ * We will pass isMinHeap=false if we want a max-heap.
  */
 static int compareInt(const void* a, const void* b) {
     int ai = *(const int*)a;
     int bi = *(const int*)b;
-    return (ai - bi);
+    return ai - bi;
 }
 
-/**
- * Comparator for floats (min-heap).
- */
 static int compareFloat(const void* a, const void* b) {
     float af = *(const float*)a;
     float bf = *(const float*)b;
@@ -30,208 +27,288 @@ static int compareFloat(const void* a, const void* b) {
     return 0;
 }
 
-/**
- * Comparator for C-strings (lexicographical min-heap).
- */
 static int compareString(const void* a, const void* b) {
-    const char* sa = *(const char**)a; // Because we'll store a pointer to the string
+    // We store pointers to C-strings in the PQ
+    const char* sa = *(const char**)a;
     const char* sb = *(const char**)b;
     return strcmp(sa, sb);
 }
 
-/**
- * A helper to print an int array. 
- * Not strictly required, but can help in debugging.
+/* 
+ * =============== HEAP INVARIANT CHECK ===============
+ * Ensure that for every node i, the parent–child relationship
+ * is maintained according to isMinHeap or isMaxHeap.
  */
-static void printInt(const void* data, size_t dataSize) {
-    (void)dataSize; // not used
-    printf("%d", *(const int*)data);
+static void checkHeapInvariant(const PriorityQueue* pq) {
+    size_t n = pqSize(pq);
+    // For each parent i, check left child (2i+1) and right child (2i+2)
+    for (size_t i = 0; i < n; i++) {
+        size_t left = 2*i + 1;
+        size_t right = 2*i + 2;
+        const void* parentData = daGet(&pq->da, i); // direct from underlying array
+        if (left < n) {
+            const void* leftData = daGet(&pq->da, left);
+            // Compare parent and left child
+            int cmp = pq->userCompareFunc(parentData, leftData);
+            if (pq->isMinHeap) {
+                // parent <= child => compare(parent, child) <= 0
+                assert(cmp <= 0 && "Min-heap invariant violated (parent > left child)!");
+            } else {
+                // max-heap => parent >= child => compare(parent, child) >= 0
+                assert(cmp >= 0 && "Max-heap invariant violated (parent < left child)!");
+            }
+        }
+        if (right < n) {
+            const void* rightData = daGet(&pq->da, right);
+            // Compare parent and right child
+            int cmp = pq->userCompareFunc(parentData, rightData);
+            if (pq->isMinHeap) {
+                assert(cmp <= 0 && "Min-heap invariant violated (parent > right child)!");
+            } else {
+                assert(cmp >= 0 && "Max-heap invariant violated (parent < right child)!");
+            }
+        }
+    }
 }
 
-/**
- * Test the priority queue with integers.
+/* 
+ * =============== TEST FUNCTIONS ===============
+ *
+ * We'll create an "internal" version of each test that takes isMinHeap. 
+ * Then we'll call these internal functions for both true (min) and false (max).
  */
-static void testIntegers(void) {
-    printf("=== testIntegers ===\n");
-    PriorityQueue pq;
-    pqInit(&pq, compareInt, 0);
 
-    // Insert a few integers
+/* ---------- Test with integers ---------- */
+
+static void testIntegersInternal(bool isMinHeap) {
+    printf("=== testIntegers (isMinHeap=%s) ===\n", isMinHeap?"true":"false");
+
+    PriorityQueue pq;
+    pqInit(&pq, compareInt, isMinHeap, 0);
+
     int numbers[] = {10, 4, 15, 2, 8, 20};
-    const size_t count = sizeof(numbers) / sizeof(numbers[0]);
+    size_t count = sizeof(numbers)/sizeof(numbers[0]);
+
+    // Push them all
     for (size_t i = 0; i < count; i++) {
         pqPush(&pq, &numbers[i], sizeof(int));
+        // Check structure after each push
+        checkHeapInvariant(&pq);
     }
-
-    // The queue should be in min-heap order (2 is smallest)
     assert(pqSize(&pq) == count);
-    int top = *(int*)pqTop(&pq);
-    assert(top == 2);
 
-    // Pop all elements and check ascending order
-    int prev = -999999;
-    size_t outSize;
+    // If min-heap, top should be the smallest => 2
+    // If max-heap, top should be the largest => 20
+    int topVal = *(int*)pqTop(&pq);
+    int expectedTop = isMinHeap ? 2 : 20;
+    assert(topVal == expectedTop);
+
+    // Pop all elements. 
+    // For min-heap, they should come out in ascending order.
+    // For max-heap, they should come out in descending order.
+    int prev = isMinHeap ? -999999 : 999999; 
     for (size_t i = 0; i < count; i++) {
         int poppedVal;
-        outSize = sizeof(poppedVal);
+        size_t outSize = sizeof(poppedVal);
         bool popped = pqPop(&pq, &poppedVal, &outSize);
         assert(popped);
-        assert((int)outSize == (int)sizeof(int));
+        checkHeapInvariant(&pq); // verify structure after each pop
+        assert(outSize == sizeof(int));
 
-        // Make sure it's in ascending order
-        assert(poppedVal >= prev);
-        prev = poppedVal;
+        if (isMinHeap) {
+            assert(poppedVal >= prev && "Ascending order violated for min-heap");
+            prev = poppedVal;
+        } else {
+            assert(poppedVal <= prev && "Descending order violated for max-heap");
+            prev = poppedVal;
+        }
     }
-    assert(pqIsEmpty(&pq));
 
+    assert(pqIsEmpty(&pq));
     pqFree(&pq);
-    printf("testIntegers passed!\n\n");
+
+    printf("testIntegers (isMinHeap=%s) passed!\n\n", isMinHeap?"true":"false");
 }
 
-/**
- * Test the priority queue with floats.
- */
-static void testFloats(void) {
-    printf("=== testFloats ===\n");
+/* ---------- Test with floats ---------- */
+
+static void testFloatsInternal(bool isMinHeap) {
+    printf("=== testFloats (isMinHeap=%s) ===\n", isMinHeap?"true":"false");
+
     PriorityQueue pq;
-    pqInit(&pq, compareFloat, 0);
+    pqInit(&pq, compareFloat, isMinHeap, 0);
 
     float values[] = {3.14f, 1.0f, 2.72f, -1.5f, 10.01f};
-    const size_t count = sizeof(values) / sizeof(values[0]);
+    size_t count = sizeof(values) / sizeof(values[0]);
 
     for (size_t i = 0; i < count; i++) {
         pqPush(&pq, &values[i], sizeof(float));
+        checkHeapInvariant(&pq);
     }
     assert(pqSize(&pq) == count);
 
-    // Check top
+    // Top check
+    // For min-heap => -1.5
+    // For max-heap => 10.01
     float topVal = *(float*)pqTop(&pq);
-    assert(topVal == -1.5f);
+    float expected = isMinHeap ? -1.5f : 10.01f;
+    assert(topVal == expected);
 
-    // Pop in ascending order
-    float prev = -999999.0f;
+    // Pop in ascending (min) or descending (max) order
+    float prev = isMinHeap ? -999999.0f : 9999999.0f;
     for (size_t i = 0; i < count; i++) {
         float poppedVal;
         size_t outSize = sizeof(poppedVal);
         bool popped = pqPop(&pq, &poppedVal, &outSize);
         assert(popped);
+        checkHeapInvariant(&pq);
         assert(outSize == sizeof(float));
-        assert(poppedVal >= prev);
-        prev = poppedVal;
-    }
-    assert(pqIsEmpty(&pq));
 
+        if (isMinHeap) {
+            assert(poppedVal >= prev && "Ascending order violated for min-heap");
+            prev = poppedVal;
+        } else {
+            assert(poppedVal <= prev && "Descending order violated for max-heap");
+            prev = poppedVal;
+        }
+    }
+
+    assert(pqIsEmpty(&pq));
     pqFree(&pq);
-    printf("testFloats passed!\n\n");
+
+    printf("testFloats (isMinHeap=%s) passed!\n\n", isMinHeap?"true":"false");
 }
 
-/**
- * Test the priority queue with strings.
- * We'll store pointers to strings, so we must be careful about
- * how we push. One common approach is to store a (char *) in the PQ.
- * 
- * Because our dynamic_array is storing data by copy, we can't just do
- * `const char* txt = "hello"; pqPush(...)` with `&txt`. We actually
- * want to store `char *` in the array. 
- * 
- * Or we can store the entire string if we want. 
- * For the sake of demonstrating the comparator, let's store pointers.
- * We'll have a comparator that does strcmp on the pointed-to strings.
- */
-static void testStrings(void) {
-    printf("=== testStrings ===\n");
+/* ---------- Test with strings ---------- */
+
+static void testStringsInternal(bool isMinHeap) {
+    printf("=== testStrings (isMinHeap=%s) ===\n", isMinHeap?"true":"false");
+
     PriorityQueue pq;
-    pqInit(&pq, compareString, 0);
+    pqInit(&pq, compareString, isMinHeap, 0);
 
     const char* words[] = {"banana", "apple", "orange", "zzz", "aaa"};
     size_t count = sizeof(words)/sizeof(words[0]);
 
-    // We will push pointers (char*) into the PQ. 
-    // Because daPushBack copies the pointer, we can do this safely.
+    // Push each pointer
+    // In the PQ we are storing (char*) copies
     for (size_t i = 0; i < count; i++) {
-        // We'll push the pointer itself: 
-        //   The data is &words[i], the size is sizeof(char*)
-        // Then the PQ dynamic array will store one pointer (4 or 8 bytes).
         const char* tmp = words[i];
         pqPush(&pq, &tmp, sizeof(char*));
+        checkHeapInvariant(&pq);
     }
-
     assert(pqSize(&pq) == count);
-    // In lexicographical order, "aaa" is smallest, so top should be "aaa"
+
+    // For min-heap, top is lexicographically smallest => "aaa"
+    // For max-heap, top is lexicographically largest => "zzz"
     const char** topStrPtr = (const char**)pqTop(&pq);
     assert(topStrPtr);
-    assert(strcmp(*topStrPtr, "aaa") == 0);
+    const char* expected = isMinHeap ? "aaa" : "zzz";
+    assert(strcmp(*topStrPtr, expected) == 0);
 
-    // Pop all, check ascending lexicographic order
-    char* prev = NULL;
+    // Pop all
+    // For min-heap => ascending lexicographic
+    // For max-heap => descending lexicographic
+    const char* prev = isMinHeap ? NULL : "\x7F"; // something "bigger than zzz" for descending
+    // (We can do "~", or any high ASCII sentinel. Using \x7F or similar to be safe)
+    
     for (size_t i = 0; i < count; i++) {
         const char* poppedWord;
         size_t outSize = sizeof(poppedWord);
         bool popped = pqPop(&pq, &poppedWord, &outSize);
         assert(popped);
-        // If we want to ensure ascending order, we can do:
-        if (prev) {
-            assert(strcmp(poppedWord, prev) >= 0);
+        checkHeapInvariant(&pq);
+
+        if (isMinHeap) {
+            // Must be >= the previous word lexicographically
+            if (prev) {
+                assert(strcmp(poppedWord, prev) >= 0);
+            }
+            prev = poppedWord;
+        } else {
+            // Must be <= the previous word lexicographically
+            // For the first iteration, prev is \x7F
+            assert(strcmp(poppedWord, prev) <= 0);
+            prev = poppedWord;
         }
-        prev = (char*)poppedWord;
     }
 
     assert(pqIsEmpty(&pq));
     pqFree(&pq);
-    printf("testStrings passed!\n\n");
+
+    printf("testStrings (isMinHeap=%s) passed!\n\n", isMinHeap?"true":"false");
 }
 
-/**
- * Stress test with random integers.
- * Insert a large number of random integers, then pop them all to verify
- * ascending order (if using a min-heap).
- */
-static void testStress(void) {
-    printf("=== testStress ===\n");
-    PriorityQueue pq;
-    pqInit(&pq, compareInt, 0);
+/* ---------- Stress test with random integers ---------- */
 
-    // Let's do 10000 random integers, for example
-    const int TEST_SIZE = 10000;
+static void testStressInternal(bool isMinHeap) {
+    printf("=== testStress (isMinHeap=%s) ===\n", isMinHeap?"true":"false");
+
+    PriorityQueue pq;
+    pqInit(&pq, compareInt, isMinHeap, 0);
+
+    // Let's use a smaller test size if we are verifying after every operation
+    // because doing 1 million push/pops + invariants is expensive.
+    const int TEST_SIZE = 30000;
     srand((unsigned)time(NULL));
 
-    // Insert random ints
+    // Insert random ints, checking structure each time
     for (int i = 0; i < TEST_SIZE; i++) {
         int r = rand();
         pqPush(&pq, &r, sizeof(int));
+        checkHeapInvariant(&pq);
     }
 
-    // Pop them all, ensure ascending order
-    int prev = -1;
-    size_t outSize = 0;
+    // Pop them all, checking the order and structure
+    // For min-heap => ascending
+    // For max-heap => descending
+    int prev = isMinHeap ? -2147483647 : 2147483647; // extremes
     for (int i = 0; i < TEST_SIZE; i++) {
         int poppedVal;
-        outSize = sizeof(poppedVal);
+        size_t outSize = sizeof(poppedVal);
         bool popped = pqPop(&pq, &poppedVal, &outSize);
         assert(popped);
         assert(outSize == sizeof(int));
-        // The first pop we can't compare with prev if we want strict ascending,
-        // but for subsequent ones we ensure poppedVal >= prev.
-        assert(poppedVal >= prev);
-        prev = poppedVal;
+        checkHeapInvariant(&pq);
+
+        if (isMinHeap) {
+            // ascending
+            assert(poppedVal >= prev);
+            prev = poppedVal;
+        } else {
+            // descending
+            assert(poppedVal <= prev);
+            prev = poppedVal;
+        }
     }
 
     assert(pqIsEmpty(&pq));
     pqFree(&pq);
-
-    printf("testStress passed!\n\n");
+    printf("testStress (isMinHeap=%s) passed!\n\n", isMinHeap?"true":"false");
 }
 
-/**
- * Run all tests.
+/* 
+ * =============== MASTER TEST ===============
+ * Call each test in both min-heap and max-heap modes.
  */
 void testPriorityQueue(void) {
-    printf("=== Running Priority Queue Tests ===\n");
-    testIntegers();
-    testFloats();
-    testStrings();
-    testStress();
-    printf("=== All tests passed! ===\n");  
+    printf("=== Running Priority Queue Tests ===\n\n");
+    
+    // 1) Integers
+    testIntegersInternal(true);   // min-heap
+    testIntegersInternal(false);  // max-heap
+
+    // 2) Floats
+    testFloatsInternal(true);
+    testFloatsInternal(false);
+
+    // 3) Strings
+    testStringsInternal(true);
+    testStringsInternal(false);
+
+    // 4) Stress Test
+    testStressInternal(true);
+    testStressInternal(false);
+
+    printf("=== All tests passed! ===\n");
 }
-
-

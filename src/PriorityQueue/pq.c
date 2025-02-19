@@ -23,24 +23,40 @@ static void swapElements(DynamicArray* da, size_t indexA, size_t indexB) {
 }
 
 /**
+ * A helper that uses the base compare function but flips it if we're in max-heap mode.
+ *
+ * In a min-heap, we do: userCompareFunc(a, b).
+ * In a max-heap, we effectively want "a is higher priority if a > b", so we invert
+ * the comparison by swapping arguments in the call.
+ */
+static int priorityCompare(const PriorityQueue* pq, const void* a, const void* b) {
+    if (pq->isMinHeap) {
+        // Normal “ascending” compare
+        return pq->userCompareFunc(a, b);
+    } else {
+        // Max-heap => invert the result
+        // (i.e., if userCompareFunc returns negative for (a < b),
+        //  we want negative if (a > b), so we swap a and b.)
+        return pq->userCompareFunc(b, a);
+    }
+}
+
+/**
  * Bubble up the element at 'index' to maintain the heap property.
  */
 static void bubbleUp(PriorityQueue* pq, size_t index) {
-    // child index: index
-    // parent index: (index - 1) / 2
     while (index > 0) {
         size_t parentIndex = (index - 1) / 2;
         const void* childData = daGet(&pq->da, index);
         const void* parentData = daGet(&pq->da, parentIndex);
 
-        // If child < parent based on compareFunc, swap
-        // i.e., child is higher priority if compareFunc < 0
-        if (pq->compareFunc(childData, parentData) < 0) {
+        // If child is "higher priority" than parent, swap
+        // "Higher priority" means priorityCompare(...) < 0
+        if (priorityCompare(pq, childData, parentData) < 0) {
             swapElements(&pq->da, index, parentIndex);
             index = parentIndex;
         } else {
-            // Heap property satisfied
-            break;
+            break; // no swap needed, heap property satisfied
         }
     }
 }
@@ -54,31 +70,30 @@ static void bubbleDown(PriorityQueue* pq, size_t index) {
     while (true) {
         size_t leftChild = 2 * index + 1;
         size_t rightChild = 2 * index + 2;
-        size_t smallest = index; // assume current index is the "smallest"/highest priority
-
+        size_t highestPriorityIndex = index; // assume current index has highest priority
         const void* currentData = daGet(&pq->da, index);
 
         // Check left child
         if (leftChild < size) {
             const void* leftData = daGet(&pq->da, leftChild);
-            if (pq->compareFunc(leftData, currentData) < 0) {
-                smallest = leftChild;
+            if (priorityCompare(pq, leftData, currentData) < 0) {
+                highestPriorityIndex = leftChild;
             }
         }
 
         // Check right child
         if (rightChild < size) {
-            const void* smallestData = daGet(&pq->da, smallest);
+            const void* bestDataSoFar = daGet(&pq->da, highestPriorityIndex);
             const void* rightData = daGet(&pq->da, rightChild);
-            if (pq->compareFunc(rightData, smallestData) < 0) {
-                smallest = rightChild;
+            if (priorityCompare(pq, rightData, bestDataSoFar) < 0) {
+                highestPriorityIndex = rightChild;
             }
         }
 
-        if (smallest != index) {
-            // swap with smallest child
-            swapElements(&pq->da, index, smallest);
-            index = smallest;
+        if (highestPriorityIndex != index) {
+            // Swap with the child that has higher priority
+            swapElements(&pq->da, index, highestPriorityIndex);
+            index = highestPriorityIndex;
         } else {
             break; // heap property is restored
         }
@@ -88,17 +103,20 @@ static void bubbleDown(PriorityQueue* pq, size_t index) {
 /********************************************************
  * Public interface
  ********************************************************/
-
-void pqInit(PriorityQueue* pq, 
-            int (*compareFunc)(const void*, const void*), 
-            size_t initialCapacity) {
+void pqInit(PriorityQueue* pq,
+            int (*userCompareFunc)(const void*, const void*),
+            bool isMinHeap,
+            size_t initialCapacity) 
+{
     daInit(&pq->da, initialCapacity);
-    pq->compareFunc = compareFunc;
+    pq->userCompareFunc = userCompareFunc;  // user-provided base compare
+    pq->isMinHeap = isMinHeap;              // min-heap or max-heap mode?
 }
 
 void pqFree(PriorityQueue* pq) {
     daFree(&pq->da);
-    pq->compareFunc = NULL;
+    pq->userCompareFunc = NULL;
+    pq->isMinHeap = true; // or false, doesn’t really matter now
 }
 
 void pqPush(PriorityQueue* pq, const void* data, size_t dataSize) {
