@@ -625,6 +625,12 @@ In general, whenever you need quick extraction of the smallest element (in appro
 A tree specialized for storing strings by character.
 Each edge typically represents one character. Enables fast prefix lookups.
 
+![Trie1](diagrams/Trie1.png "Trie1")
+![Trie2](diagrams/Trie2.png "Trie2")
+![Trie3](diagrams/Trie3.png "Trie3")
+
+
+
 ## Segment Tree
 
 Specialized tree for storing information about intervals, segments (e.g., sums over array ranges).
