@@ -628,6 +628,10 @@ Each edge typically represents one character. Enables fast prefix lookups.
 ![Trie1](diagrams/Trie1.png "Trie1")
 ![Trie2](diagrams/Trie2.png "Trie2")
 ![Trie3](diagrams/Trie3.png "Trie3")
+![Trie4](diagrams/Trie4.png "Trie4")
+![Trie5](diagrams/Trie5.png "Trie5")
+![Trie6](diagrams/Trie6.png "Trie6")
+![Trie7](diagrams/Trie7.png "Trie7")
 
 
 
