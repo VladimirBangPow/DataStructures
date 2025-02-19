@@ -705,4 +705,73 @@ static void merge_leaves(BPTreeNode* leftLeaf, BPTreeNode* rightLeaf, int sepInd
      return (node->num_keys < min_keys);
  }
  
+ /* --------------------------------------------------------------------------
+  * bptree_print: BFS-level debug
+  * -------------------------------------------------------------------------- */
+ typedef struct QNode {
+     BPTreeNode* node;
+     struct QNode* next;
+ } QNode;
  
+ static void enqueue(QNode** head, BPTreeNode* node) {
+     QNode* nq = (QNode*)malloc(sizeof(QNode));
+     nq->node = node;
+     nq->next = NULL;
+     if (!(*head)) {
+         *head = nq;
+         return;
+     }
+     QNode* tmp = *head;
+     while (tmp->next) tmp = tmp->next;
+     tmp->next = nq;
+ }
+ 
+ static BPTreeNode* dequeue(QNode** head) {
+     if(!(*head)) return NULL;
+     QNode* front = *head;
+     BPTreeNode* node = front->node;
+     *head = front->next;
+     free(front);
+     return node;
+ }
+ 
+ void bptree_print(BPTree* tree) {
+     if (!tree || !tree->root) {
+         printf("(Empty B+ Tree)\n");
+         return;
+     }
+     printf("B+ Tree (order=%d):\n", tree->order);
+     QNode* queue = NULL;
+     enqueue(&queue, tree->root);
+ 
+     BPTreeNode* last_in_level = tree->root;
+     BPTreeNode* next_last_in_level = NULL;
+ 
+     while (queue) {
+         BPTreeNode* node = dequeue(&queue);
+         /* Print node's keys (assuming they're int*). */
+         printf("[");
+         for (int i=0; i<node->num_keys; i++){
+             if (i>0) printf(" ");
+             int keyval = *(int*)node->keys[i];
+             printf("%d", keyval);
+         }
+         printf("] ");
+ 
+         if (!node->is_leaf) {
+             for (int i=0; i<=node->num_keys; i++){
+                 if (node->children[i]) {
+                     enqueue(&queue, node->children[i]);
+                     next_last_in_level = node->children[i];
+                 }
+             }
+         }
+ 
+         if (node == last_in_level) {
+             printf("\n");
+             last_in_level = next_last_in_level;
+             next_last_in_level = NULL;
+         }
+     }
+     printf("\n");
+ }
