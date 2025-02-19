@@ -567,8 +567,8 @@ Time Complexity: 𝑂(log𝑛)
 	- If the parent underflows, recursively handle it in the same manner (borrow from or merge with sibling).
 	- If merging/splitting occurs at the root and results in underflow, the root can be adjusted.
 Time Complexity: 𝑂(log𝑛) similarly to insertion.
-
-
+![BP12](diagrams/BP12.png "BP12")
+![BP13](diagrams/BP13.png "BP13")
 
 
 NOTE: Works on GCC but not CLANG compiler. This is definitely a bad bug, but I can't really fix the compiler. I will try and look for a workaround in the code, but no promises. Just use GCC for now.
