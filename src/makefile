@@ -22,7 +22,7 @@ all:
 		Treap/treap.c Treap/test_treap.c \
 		BTree/btree.c BTree/test_btree.c \
 		BPTree/bp_tree.c BPTree/test_bp_tree.c \
-		PriorityQueue/Pq.c PriorityQueue/test_pq.c \
+		PriorityQueue/pq.c PriorityQueue/test_pq.c \
 	    -o main \
 		-lm
 
