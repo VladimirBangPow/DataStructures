@@ -543,7 +543,17 @@ Time Complexity: 𝑂(log𝑛) due to the balanced tree property.
 	- If the parent internal node also overflows, recursively split and promote further up.
 	- If the split reaches the root (and the root overflows), create a new root node and increase the tree height by one.
 Time Complexity: 𝑂(log𝑛)
-
+![BP1](diagrams/BP1.png "BP1")
+![BP2](diagrams/BP2.png "BP2")
+![BP3](diagrams/BP3.png "BP3")
+![BP4](diagrams/BP4.png "BP4")
+![BP5](diagrams/BP5.png "BP5")
+![BP6](diagrams/BP6.png "BP6")
+![BP7](diagrams/BP7.png "BP7")
+![BP8](diagrams/BP8.png "BP8")
+![BP9](diagrams/BP9.png "BP9")
+![BP10](diagrams/BP10.png "BP10")
+![BP11](diagrams/BP11.png "BP11")
 
 
 3. Deletion
