@@ -226,10 +226,12 @@ static void testStress(void) {
  * Run all tests.
  */
 void testPriorityQueue(void) {
+    printf("=== Running Priority Queue Tests ===\n");
     testIntegers();
     testFloats();
     testStrings();
     testStress();
+    printf("=== All tests passed! ===\n");  
 }
 
 
