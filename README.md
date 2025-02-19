@@ -489,7 +489,7 @@ A B+ tree is a specialized data structure often used in databases and filesystem
 
 3. Separation of Internal Keys and Data
    
-- Internal nodes (also referred to as “index nodes”) only store keys that act as separators (guides) to direct the search.
+- Internal nodes (also referred to as “index nodes”) only store keys (up to m-1) that act as separators (guides) to direct the search.
 - Leaf nodes store the actual data values (in the form of record pointers or references to the data).
 - This is the key difference from a standard B-tree, where both internal nodes and leaves can store actual data.
 
