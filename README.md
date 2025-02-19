@@ -562,11 +562,7 @@ Time Complexity: 𝑂(log𝑛)
 	- If merging/splitting occurs at the root and results in underflow, the root can be adjusted.
 Time Complexity: 𝑂(log𝑛) similarly to insertion.
 
-![B+11](diagrams/B+11.png "B+11")
-![B+12](diagrams/B+12.png "B+12")
-![B+13](diagrams/B+13.png "B+13")
-![B+14](diagrams/B+14.png "B+14")
-![B+15](diagrams/B+15.png "B+15")
+
 
 
 NOTE: Works on GCC but not CLANG compiler. This is definitely a bad bug, but I can't really fix the compiler. I will try and look for a workaround in the code, but no promises. Just use GCC for now.
