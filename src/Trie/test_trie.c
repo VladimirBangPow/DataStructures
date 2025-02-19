@@ -22,7 +22,7 @@
   *   gcc -Wall -DSTRESS_LIMIT=500 -o test_trie trie.c test_trie.c -I.
   */
  #ifndef STRESS_LIMIT
- #define STRESS_LIMIT 1000
+ #define STRESS_LIMIT 2000
  #endif
  
  /*
