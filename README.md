@@ -578,13 +578,47 @@ NOTE: Works on GCC but not CLANG compiler. This is definitely a bad bug, but I c
 A specialized tree-based structure (often represented implicitly via an array) where the parent’s key is either always larger (max-heap) or smaller (min-heap) than its children.
 Supports efficient retrieval of min/max in O(1) and insertion/deletion in O(log n).
 
+Min-heaps are specialized data structures that always give you quick access to the smallest (or “minimum”) element in a collection. Because of this guaranteed access to the minimum, min-heaps are commonly used in any scenario where you repeatedly need to extract the smallest item or reorder items based on priority (where “priority” is usually defined in ascending order). Below are some of the most common applications:
+
+A priority queue is an abstract data type where each element has a "priority." A min-heap efficiently implements a min-priority queue, meaning you can always remove (pop) the smallest element first.
+Common usage examples include job scheduling where tasks with the highest priority (often the lowest “priority number” means urgent) are processed first.
+
+### Graph Algorithms (e.g., Dijkstra’s Algorithm)
+
+In Dijkstra’s algorithm for shortest paths in a weighted graph, you repeatedly pick the vertex with the smallest tentative distance and relax (update) its neighbors. A min-priority queue (min-heap) is typically used to retrieve the next closest vertex efficiently.
+Similarly, Prim’s algorithm for minimum spanning trees also uses a min-heap to select the next edge of minimum weight.
+
+### Huffman Coding
+
+Huffman’s algorithm builds an optimal prefix code (often used in data compression). It repeatedly merges the two smallest-frequency nodes (from a priority queue) into a combined node. A min-heap makes it efficient to find and remove the smallest two frequencies each time.
+Order Statistics
+
+If you only need to track and repeatedly extract the smallest k elements in a streaming fashion, a min-heap can help. (Or in some cases, people use max-heaps to keep track of largest elements — but the heap approach is similar.)
+
+### Online Median Finding (in tandem with a max-heap)
+
+A classic solution for finding a running median uses a max-heap for the lower half of numbers and a min-heap for the upper half. Balancing these two heaps lets you query the median in O(1) time and insert new elements in O(
+logn) time.
+
+### Scheduling Problems
+
+In operating systems or real-time systems, tasks/jobs often have priorities, and you may need to pick the highest-priority (lowest numeric value) job next. A min-heap is well-suited for this type of scheduling queue.
+
+### Merging k Sorted Lists
+
+When you have multiple sorted lists and want to merge them into one sorted list (for example in external sorting or in certain types of database queries), you can keep one element from each list in a min-heap. You always extract (pop) the smallest of these, then insert the next element from the list that was just taken.
+In general, whenever you need quick extraction of the smallest element (in approximately O(logn) time), or you need to insert new elements while preserving a structure where the smallest can be found/removed efficiently, a min-heap is a perfect fit.
+
+### Pushing
 ![Pq1](diagrams/Pq1.png "Pq1")
 ![Pq2](diagrams/Pq2.png "Pq2")
 ![Pq3](diagrams/Pq3.png "Pq3")
 ![Pq4](diagrams/Pq4.png "Pq4")
 ![Pq5](diagrams/Pq5.png "Pq5")
 
-
+### Popping
+![Pq6](diagrams/Pq6.png "Pq6")
+![Pq7](diagrams/Pq7.png "Pq7")
 
 ## Trie (Prefix Tree)
 
