@@ -17,6 +17,7 @@
 #include "BTree/test_btree.h"
 #include "BPTree/test_bp_tree.h"
 #include "PriorityQueue/test_pq.h"
+#include "Trie/test_trie.h"
 int main(void) {
     // testLinkedList();
     // testStack();
@@ -36,6 +37,7 @@ int main(void) {
 	// testTreap();
 	// testBTree();
     // testBPTree();
-    testPriorityQueue();
+    // testPriorityQueue();
+    testTrie();
     return 0;
 }

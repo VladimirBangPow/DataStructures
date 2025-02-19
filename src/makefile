@@ -23,6 +23,7 @@ all:
 		BTree/btree.c BTree/test_btree.c \
 		BPTree/bp_tree.c BPTree/test_bp_tree.c \
 		PriorityQueue/pq.c PriorityQueue/test_pq.c \
+		Trie/trie.c Trie/test_trie.c \
 	    -o main \
 		-lm
 

@@ -3,6 +3,8 @@
         "stdbool.h": "c",
         "limits": "cpp",
         "ratio": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "__locale": "c",
+        "bitset": "c"
     }
 }
