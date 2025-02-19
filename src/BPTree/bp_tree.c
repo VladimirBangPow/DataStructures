@@ -143,7 +143,7 @@
  static void bptree_insert_leaf_no_split(BPTreeNode* leaf, bptree_cmp cmp, void* key, void* value);
  static void bptree_insert_leaf_split(BPTree* tree, BPTreeNode* leaf, void* key, void* value);
  static void bptree_insert_into_parent(BPTree* tree, BPTreeNode* left, void* up_key, BPTreeNode* right);
- static void insert_into_node(BPTreeNode* node, int index, void* key, BPTreeNode* right);
+ static void insert_into_parent(BPTreeNode* parent, int index, void* key, BPTreeNode* right);
  
  void bptree_insert(BPTree* tree, void* key, void* value) {
      if (!tree->root) {
@@ -258,7 +258,7 @@
  
      if (parent->num_keys < (tree->order -1)) {
          /* SCENARIO 4: parent has space */
-         insert_into_node(parent, idx, up_key, right);
+         insert_into_parent(parent, idx, up_key, right);
          right->parent = parent;
      } else {
          /* SCENARIO 5: parent is full => split internal node */
@@ -328,14 +328,14 @@
      }
  }
  
- static void insert_into_node(BPTreeNode* node, int index, void* key, BPTreeNode* right) {
-     for (int i=node->num_keys; i>index; i--) {
-         node->keys[i]       = node->keys[i-1];
-         node->children[i+1] = node->children[i];
+ static void insert_into_parent(BPTreeNode* parent, int index, void* key, BPTreeNode* right) {
+     for (int i=parent->num_keys; i>index; i--) {
+         parent->keys[i]       = parent->keys[i-1];
+         parent->children[i+1] = parent->children[i];
      }
-     node->keys[index]       = key;
-     node->children[index+1] = right;
-     node->num_keys++;
+     parent->keys[index]       = key;
+     parent->children[index+1] = right;
+     parent->num_keys++;
  }
  
  /* ------------------------- DELETE LOGIC BELOW -------------------------- */
@@ -357,7 +357,7 @@
  static int find_child_index(BPTreeNode* parent, BPTreeNode* child);
  static bool underflows(BPTree* tree, BPTreeNode* node);
  
- /* -- Corrected free_node: free arrays THEN free(node). -- */
+ /* -- free arrays THEN free(node). -- */
  static void free_node(BPTreeNode* node) {
      if (!node) return;
      if (node->keys)     free(node->keys);
@@ -390,7 +390,13 @@
          handle_underflow(tree, leaf);
      }
  
-     /* 5. Special root case. */
+     /* 5. Special root case. 
+	 	When an internal node (the root) ends up with no keys, 
+		it means it effectively has a single child (since a 
+		valid non‐leaf node with 0 keys can only have 1 child 
+		pointer left). In a B+ tree, that situation triggers 
+		a height reduction:
+	 */
      BPTreeNode* root = tree->root;
      if (!root->is_leaf && root->num_keys == 0) {
          BPTreeNode* newRoot = root->children[0];
@@ -552,7 +558,7 @@
      node->parent->keys[parentIndex - 1] = right->keys[0];
  }
  
- /* Borrow from left internal node */
+/* Borrow from left internal node */
  static void borrow_from_left_internal(BPTreeNode* node, BPTreeNode* left, int parentIndex) {
      BPTreeNode* parent = node->parent;
      // Shift node keys/children right
@@ -688,16 +694,7 @@ static void merge_leaves(BPTreeNode* leftLeaf, BPTreeNode* rightLeaf, int sepInd
      }
      return -1; 
  }
- 
-//  static int find_key_index_in_node(BPTreeNode* node, void* key, int (*cmp)(const void*, const void*)) {
-//      for (int i=0; i<node->num_keys; i++) {
-//          int c = cmp(key, node->keys[i]);
-//          if (c == 0) return i;
-//          if (c < 0) return i; 
-//      }
-//      return node->num_keys;
-//  }
- 
+
  /* Underflows if node->num_keys < MIN_KEYS (except root) */
  static bool underflows(BPTree* tree, BPTreeNode* node) {
      if (!node->parent) {
@@ -708,73 +705,4 @@ static void merge_leaves(BPTreeNode* leftLeaf, BPTreeNode* rightLeaf, int sepInd
      return (node->num_keys < min_keys);
  }
  
- /* --------------------------------------------------------------------------
-  * bptree_print: BFS-level debug
-  * -------------------------------------------------------------------------- */
- typedef struct QNode {
-     BPTreeNode* node;
-     struct QNode* next;
- } QNode;
  
- static void enqueue(QNode** head, BPTreeNode* node) {
-     QNode* nq = (QNode*)malloc(sizeof(QNode));
-     nq->node = node;
-     nq->next = NULL;
-     if (!(*head)) {
-         *head = nq;
-         return;
-     }
-     QNode* tmp = *head;
-     while (tmp->next) tmp = tmp->next;
-     tmp->next = nq;
- }
- 
- static BPTreeNode* dequeue(QNode** head) {
-     if(!(*head)) return NULL;
-     QNode* front = *head;
-     BPTreeNode* node = front->node;
-     *head = front->next;
-     free(front);
-     return node;
- }
- 
- void bptree_print(BPTree* tree) {
-     if (!tree || !tree->root) {
-         printf("(Empty B+ Tree)\n");
-         return;
-     }
-     printf("B+ Tree (order=%d):\n", tree->order);
-     QNode* queue = NULL;
-     enqueue(&queue, tree->root);
- 
-     BPTreeNode* last_in_level = tree->root;
-     BPTreeNode* next_last_in_level = NULL;
- 
-     while (queue) {
-         BPTreeNode* node = dequeue(&queue);
-         /* Print node's keys (assuming they're int*). */
-         printf("[");
-         for (int i=0; i<node->num_keys; i++){
-             if (i>0) printf(" ");
-             int keyval = *(int*)node->keys[i];
-             printf("%d", keyval);
-         }
-         printf("] ");
- 
-         if (!node->is_leaf) {
-             for (int i=0; i<=node->num_keys; i++){
-                 if (node->children[i]) {
-                     enqueue(&queue, node->children[i]);
-                     next_last_in_level = node->children[i];
-                 }
-             }
-         }
- 
-         if (node == last_in_level) {
-             printf("\n");
-             last_in_level = next_last_in_level;
-             next_last_in_level = NULL;
-         }
-     }
-     printf("\n");
- }

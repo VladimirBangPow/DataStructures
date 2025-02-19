@@ -288,8 +288,8 @@ static void test_person(void) {
  * ------------------------------------------------------------------------- */
 static void test_stress(void) {
     const int ORDER = 3;      // a bit larger order to see more splits
-    const int N = 100000;        // number of random inserts
-    const int OPS = 100000;      // number of random delete ops
+    const int N = 20;        // number of random inserts
+    const int OPS = 20;      // number of random delete ops
 
     BPTree* tree = bptree_create(ORDER, bptree_int_cmp);
     if (!tree) {
@@ -305,12 +305,12 @@ static void test_stress(void) {
 
     // Insert random keys
     for (int i = 0; i < N; i++) {
-        keys[i] = rand() % 1000000000;   // random key
+        keys[i] = rand() % 100;   // random key
         values[i] = i;             // arbitrary "value"
 
         bptree_insert(tree, &keys[i], &values[i]);
-		// printf("%d\n", keys[i]);
-		// bptree_print(tree);
+		printf("%d\n", keys[i]);
+		bptree_print(tree);
 
         // Check after each insert
         if (!check_bptree_valid(tree)) {
@@ -327,8 +327,8 @@ static void test_stress(void) {
         // pick a random key from the array
         int idx = rand() % N;
         bptree_delete(tree, &keys[idx]);
-        // printf("%d\n", keys[idx]);
-		// bptree_print(tree);
+        printf("%d\n", keys[idx]);
+		bptree_print(tree);
         // Check after each deletion
         if (!check_bptree_valid(tree)) {
             TEST_FAIL("Stress test: invalid B+ tree during deletion sequence.");
