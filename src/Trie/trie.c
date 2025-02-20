@@ -12,19 +12,19 @@
 #include "../DynamicArray/dynamic_array.h"
 
 /* 
- * Each element in the TrieNode's 'children' array will be:
+ * Each element in the TrieNode's 'edges' array will be:
  *   - codepoint: the Unicode code point
  *   - child: pointer to the next TrieNode
  */
 typedef struct {
     int32_t   codepoint;
     TrieNode* child;
-} ChildEntry;
+} NodeEdge;
 
 /* --------------------- Node Creation and Freeing ---------------------- */
 
 /*
- * Creates and returns a new TrieNode with an empty DynamicArray of children.
+ * Creates and returns a new TrieNode with an empty DynamicArray of edges.
  */
 static TrieNode* create_trie_node(void) {
     TrieNode* node = (TrieNode*) malloc(sizeof(TrieNode));
@@ -35,8 +35,8 @@ static TrieNode* create_trie_node(void) {
     node->is_end_of_word   = false;
     node->end_of_word_count = 0;
     
-    // Initialize the dynamic array for children
-    daInit(&node->children, 4);  // start with some small capacity (e.g., 4)
+    // Initialize the dynamic array for edges
+    daInit(&node->edges, 4);  // start with some small capacity (e.g., 4)
     
     return node;
 }
@@ -48,14 +48,14 @@ static void free_node(TrieNode* node) {
     if (!node) return;
 
     // Free each child's subtree
-    size_t n = daSize(&node->children);
+    size_t n = daSize(&node->edges);
     for (size_t i = 0; i < n; i++) {
-        ChildEntry* entry = (ChildEntry*) daGetMutable(&node->children, i);
-        free_node(entry->child);
+        NodeEdge* edge = (NodeEdge*) daGetMutable(&node->edges, i);
+        free_node(edge->child);
     }
     
     // Free the dynamic array itself
-    daFree(&node->children);
+    daFree(&node->edges);
     
     // Finally free this node
     free(node);
@@ -77,68 +77,68 @@ void trie_free(Trie* trie) {
     free(trie);
 }
 
-/* --------------------- Child Lookup Helpers ---------------------- */
+/* --------------------- NodeEdge Lookup Helpers ---------------------- */
 
 /*
- * Finds an existing child entry by codepoint.
- * Returns a pointer to the matching ChildEntry in node->children, or NULL if not found.
+ * Finds an existing edge by codepoint.
+ * Returns a pointer to the matching NodeEdge in node->edges, or NULL if not found.
  */
-static ChildEntry* find_child_entry(const TrieNode* node, int32_t codepoint) {
-    size_t n = daSize(&node->children);
+static NodeEdge* find_edge(const TrieNode* node, int32_t codepoint) {
+    size_t n = daSize(&node->edges);
     for (size_t i = 0; i < n; i++) {
-        ChildEntry* entry = (ChildEntry*) daGetMutable((DynamicArray*)&node->children, i);
-        if (entry->codepoint == codepoint) {
-            return entry;
+        NodeEdge* edge = (NodeEdge*) daGetMutable((DynamicArray*)&node->edges, i);
+        if (edge->codepoint == codepoint) {
+            return edge;
         }
     }
     return NULL;
 }
 
 /*
- * If there's already a child for `codepoint`, return it.
- * Otherwise, create a new ChildEntry + child node, append it, and return the pointer.
+ * If there's already a edge for `codepoint`, return it.
+ * Otherwise, create a new NodeEdge + child node, append it, and return the pointer.
  */
-static ChildEntry* get_or_create_child_entry(TrieNode* node, int32_t codepoint) {
-    // Check if child already exists
-    ChildEntry* found = find_child_entry(node, codepoint);
+static NodeEdge* get_or_create_edge(TrieNode* node, int32_t codepoint) {
+    // Check if edge already exists
+    NodeEdge* found = find_edge(node, codepoint);
     if (found) {
         return found;
     }
     // Not found, create new
-    ChildEntry newEntry;
+    NodeEdge newEntry;
     newEntry.codepoint = codepoint;
     newEntry.child     = create_trie_node();
 
     // Push into dynamic array
-    daPushBack(&node->children, &newEntry, sizeof(newEntry));
+    daPushBack(&node->edges, &newEntry, sizeof(newEntry));
     
     // The array might reallocate, so we retrieve the pointer to the newly added element
-    size_t newIndex = daSize(&node->children) - 1;
-    return (ChildEntry*) daGetMutable(&node->children, newIndex);
+    size_t newIndex = daSize(&node->edges) - 1;
+    return (NodeEdge*) daGetMutable(&node->edges, newIndex);
 }
 
 /*
- * Removes the entry for `codepoint` from node->children (if it exists),
+ * Removes the edge for `codepoint` from node->edges (if it exists),
  * but does NOT free the child node itself (caller must handle that).
  *
- * Returns true if the entry was found and removed, false otherwise.
+ * Returns true if the edge was found and removed, false otherwise.
  */
-static bool remove_child_entry(TrieNode* node, int32_t codepoint) {
-    size_t n = daSize(&node->children);
+static bool remove_edge(TrieNode* node, int32_t codepoint) {
+    size_t n = daSize(&node->edges);
     for (size_t i = 0; i < n; i++) {
-        ChildEntry* entry = (ChildEntry*) daGetMutable(&node->children, i);
-        if (entry->codepoint == codepoint) {
-            // Swap this entry with the last one, then pop
+        NodeEdge* edge = (NodeEdge*) daGetMutable(&node->edges, i);
+        if (edge->codepoint == codepoint) {
+            // Swap this edge with the last one, then pop
             if (i != n - 1) {
                 // Get pointer to the last element
-                ChildEntry* last = (ChildEntry*) daGetMutable(&node->children, n - 1);
+                NodeEdge* last = (NodeEdge*) daGetMutable(&node->edges, n - 1);
                 // Swap
-                ChildEntry temp = *last;
-                *last = *entry;
-                *entry = temp;
+                NodeEdge temp = *last;
+                *last = *edge;
+                *edge = temp;
             }
             // Now pop back to remove the last element
-            daPopBack(&node->children, NULL, NULL);
+            daPopBack(&node->edges, NULL, NULL);
             return true;
         }
     }
@@ -159,8 +159,8 @@ void trie_insert(Trie* trie, const char* utf8_key) {
             // code < 0 => end of string or invalid sequence
             break;
         }
-        ChildEntry* entry = get_or_create_child_entry(current, code);
-        current = entry->child;
+        NodeEdge* edge = get_or_create_edge(current, code);
+        current = edge->child;
     }
     // Mark the final node
     current->is_end_of_word = true;
@@ -179,7 +179,7 @@ bool trie_search(const Trie* trie, const char* utf8_key) {
             // end or invalid => stop
             break;
         }
-        ChildEntry* found = find_child_entry(current, code);
+        NodeEdge* found = find_edge(current, code);
         if (!found) {
             // No matching child => word not present
             return false;
@@ -204,7 +204,7 @@ bool trie_starts_with(const Trie* trie, const char* utf8_prefix) {
             // Reached end of prefix or invalid => prefix matched
             return true;
         }
-        ChildEntry* found = find_child_entry(current, code);
+        NodeEdge* found = find_edge(current, code);
         if (!found) {
             // Can't continue the prefix
             return false;
@@ -233,8 +233,8 @@ static bool trie_delete_helper(TrieNode* node, const char* utf8_key) {
             if (node->end_of_word_count == 0) {
                 node->is_end_of_word = false;
             }
-            // If no children remain, signal that we can free this node
-            if (!node->is_end_of_word && daIsEmpty(&node->children)) {
+            // If no edges remain, signal that we can free this node
+            if (!node->is_end_of_word && daIsEmpty(&node->edges)) {
                 return true;
             }
         }
@@ -242,7 +242,7 @@ static bool trie_delete_helper(TrieNode* node, const char* utf8_key) {
     }
 
     // Otherwise, go deeper
-    ChildEntry* found = find_child_entry(node, code);
+    NodeEdge* found = find_edge(node, code);
     if (!found) {
         // word not found
         return false;
@@ -253,12 +253,12 @@ static bool trie_delete_helper(TrieNode* node, const char* utf8_key) {
     if (childCanDie) {
         // First, free the child's entire subtree
         free_node(childNode);
-        // Then remove the child's entry from the array
-        remove_child_entry(node, code);
+        // Then remove the child's edge from the array
+        remove_edge(node, code);
     }
 
     // After potentially removing the child, check if this node is freeable
-    if (!node->is_end_of_word && daIsEmpty(&node->children)) {
+    if (!node->is_end_of_word && daIsEmpty(&node->edges)) {
         return true;
     }
     return false;

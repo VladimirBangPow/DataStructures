@@ -3,20 +3,20 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "../DynamicArray/dynamic_array.h"  // Include your DynamicArray header
+#include "../DynamicArray/dynamic_array.h"
 
+// A node in the trie:
 typedef struct TrieNode {
-    bool is_end_of_word;
-    int  end_of_word_count;
-    // Instead of a linked list of children, use a DynamicArray of (codepoint, child) pairs
-    DynamicArray children;
+    int32_t codepoint;        // The Unicode codepoint that *this* node represents
+    bool    is_end_of_word;   
+    int     end_of_word_count;
+    // children: dynamic array of TrieNode* (pointers to child nodes)
+    DynamicArray edges;  
 } TrieNode;
 
 typedef struct Trie {
     TrieNode* root;
 } Trie;
-
-
 
 // Function declarations
 Trie* trie_create(void);
@@ -28,4 +28,4 @@ bool trie_starts_with(const Trie* trie, const char* utf8_prefix);
 
 bool trie_delete(Trie* trie, const char* utf8_key);
 
-#endif
+#endif // TRIE_H
