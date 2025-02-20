@@ -1,6 +1,6 @@
 /**
  * File: test_trie.c
- * 
+ *
  * Compile with something like:
  *      gcc -Wall -o test_trie trie.c test_trie.c -I.
  *
@@ -13,97 +13,115 @@
  #include <string.h>
  #include <stdbool.h>
  #include <assert.h>
- #include "trie.h"
- #include "test_trie.h"
  
- /* 
-  * Define a macro for limiting how many words we read/insert/delete
+ #include "trie.h"
+ #include "test_trie.h" // If you have a header declaring testTrie(), etc.
+ // If ChildEntry is declared in trie.c, you might need to replicate it here, 
+ // or include a suitable header that declares it.
+ #ifndef CHILDENTRY_DEFINED
+ typedef struct {
+     int32_t   codepoint;
+     TrieNode* child;
+ } ChildEntry;
+ #define CHILDENTRY_DEFINED
+ #endif
+ 
+ /*
+  * A macro for limiting how many words we read/insert/delete
   * during the stress test. Adjust as needed or pass via compiler:
   *   gcc -Wall -DSTRESS_LIMIT=500 -o test_trie trie.c test_trie.c -I.
   */
  #ifndef STRESS_LIMIT
  #define STRESS_LIMIT 2000
  #endif
-
-
+ 
+ 
  /* --------------------- Validation (Cycle Check) ---------------------- */
-/*
- * A small helper structure for BFS/DFS to detect cycles.
- * We'll store a dynamic array of visited TrieNode pointers.
- */
-typedef struct {
-    TrieNode **data;
-    size_t size;
-    size_t capacity;
-} NodeArray;
-
-/*
- * Returns true if 'arr' already contains 'node'.
- */
-static bool nodearray_contains(const NodeArray *arr, const TrieNode *node) {
-    for (size_t i = 0; i < arr->size; i++) {
-        if (arr->data[i] == node) {
-            return true;
-        }
-    }
-    return false;
-}
-
-/*
- * Pushes 'node' onto the visited array, resizing if needed.
- */
-static void nodearray_push(NodeArray *arr, TrieNode *node) {
-    if (arr->size == arr->capacity) {
-        arr->capacity *= 2;
-        arr->data = (TrieNode **)realloc(arr->data, arr->capacity * sizeof(TrieNode *));
-        if (!arr->data) {
-            fprintf(stderr, "Realloc failed while doing trie validation.\n");
-            exit(EXIT_FAILURE);
-        }
-    }
-    arr->data[arr->size++] = node;
-}
-
-/*
- * DFS to detect cycles: if we revisit a node, there's a cycle => invalid.
- */
-static bool trie_is_valid_dfs(TrieNode *node, NodeArray *visited) {
-    if (!node) return true;
-
-    // If we've seen this node already => cycle
-    if (nodearray_contains(visited, node)) {
-        return false;
-    }
-    nodearray_push(visited, node);
-
-    // Visit children
-    ChildMap *cm = node->children;
-    while (cm) {
-        if (!trie_is_valid_dfs(cm->child, visited)) {
-            return false;
-        }
-        cm = cm->next;
-    }
-    return true;
-}
-
-static bool trie_is_valid(const Trie *trie) {
-    if (!trie || !trie->root) return false;
-
-    NodeArray visited;
-    visited.size = 0;
-    visited.capacity = 128;
-    visited.data = (TrieNode **)malloc(visited.capacity * sizeof(TrieNode *));
-    if (!visited.data) {
-        fprintf(stderr, "Memory allocation failed in trie_is_valid.\n");
-        return false;
-    }
-
-    bool ok = trie_is_valid_dfs(trie->root, &visited);
-    free(visited.data);
-    return ok;
-}
-
+ 
+ /*
+  * We’ll still use a small helper structure for DFS to detect cycles:
+  * Storing visited TrieNode pointers in a simple array (NodeArray).
+  */
+ typedef struct {
+     TrieNode** data;
+     size_t     size;
+     size_t     capacity;
+ } NodeArray;
+ 
+ /*
+  * Returns true if 'arr' already contains 'node'.
+  */
+ static bool nodearray_contains(const NodeArray* arr, const TrieNode* node) {
+     for (size_t i = 0; i < arr->size; i++) {
+         if (arr->data[i] == node) {
+             return true;
+         }
+     }
+     return false;
+ }
+ 
+ /*
+  * Pushes 'node' onto the visited array, resizing if needed.
+  */
+ static void nodearray_push(NodeArray* arr, TrieNode* node) {
+     if (arr->size == arr->capacity) {
+         arr->capacity *= 2;
+         arr->data = (TrieNode**)realloc(arr->data, arr->capacity * sizeof(TrieNode*));
+         if (!arr->data) {
+             fprintf(stderr, "Realloc failed while doing trie validation.\n");
+             exit(EXIT_FAILURE);
+         }
+     }
+     arr->data[arr->size++] = node;
+ }
+ 
+ /*
+  * DFS to detect cycles: if we revisit a node, there's a cycle => invalid.
+  * NOTE: We now iterate over the dynamic array `node->children`.
+  */
+ static bool trie_is_valid_dfs(TrieNode* node, NodeArray* visited) {
+     if (!node) return true;
+ 
+     // If we've seen this node already => cycle
+     if (nodearray_contains(visited, node)) {
+         return false;
+     }
+     nodearray_push(visited, node);
+ 
+     // Visit each child in the dynamic array
+     size_t n = daSize(&node->children);
+     for (size_t i = 0; i < n; i++) {
+         // We stored (codepoint, child) pairs in the dynamic array
+         ChildEntry* entry = (ChildEntry*) daGetMutable(&node->children, i);
+         if (entry && entry->child) {
+             if (!trie_is_valid_dfs(entry->child, visited)) {
+                 return false;
+             }
+         }
+     }
+     return true;
+ }
+ 
+ /*
+  * Checks if the entire Trie has no cycles starting from trie->root.
+  */
+ static bool trie_is_valid(const Trie* trie) {
+     if (!trie || !trie->root) return false;
+ 
+     NodeArray visited;
+     visited.size = 0;
+     visited.capacity = 128;
+     visited.data = (TrieNode**)malloc(visited.capacity * sizeof(TrieNode*));
+     if (!visited.data) {
+         fprintf(stderr, "Memory allocation failed in trie_is_valid.\n");
+         return false;
+     }
+ 
+     bool ok = trie_is_valid_dfs(trie->root, &visited);
+     free(visited.data);
+     return ok;
+ }
+ 
  
  /*
   * A small helper to print a progress bar to the terminal.
@@ -134,7 +152,7 @@ static bool trie_is_valid(const Trie *trie) {
   * (Strings, IP addresses, special characters, etc.)
   */
  static void test_basic_trie(void) {
-     Trie *trie = trie_create();
+     Trie* trie = trie_create();
      assert(trie && "Failed to create trie");
  
      // 1: Simple string
@@ -146,7 +164,7 @@ static bool trie_is_valid(const Trie *trie) {
      assert(trie_search(trie, "world") && "Should find 'world' after insertion");
  
      // 3: IP-like data
-     const char *ip1 = "192.168.0.1";
+     const char* ip1 = "192.168.0.1";
      trie_insert(trie, ip1);
      assert(trie_search(trie, ip1) && "Should find '192.168.0.1' after insertion");
  
@@ -157,7 +175,7 @@ static bool trie_is_valid(const Trie *trie) {
      assert(!trie_search(trie, "nonexistent") && "Should not find 'nonexistent' in trie");
  
      // 6: Symbol-laden string
-     const char *symbol_str = "&c";
+     const char* symbol_str = "&c";
      trie_insert(trie, symbol_str);
      assert(trie_search(trie, symbol_str) && "Should find '&c' after insertion");
  
@@ -172,21 +190,21 @@ static bool trie_is_valid(const Trie *trie) {
   * This test uses only up to STRESS_LIMIT words for demonstration/performance purposes.
   */
  static void test_stress_trie(void) {
-     const char *filename = "./Trie/data/words.csv";  // Adjust path if needed
-     FILE *fp = fopen(filename, "r");
+     const char* filename = "./Trie/data/words.csv";  // Adjust path if needed
+     FILE* fp = fopen(filename, "r");
      assert(fp && "Could not open words.csv. Check path or file location!");
  
      printf("[STRESS TEST] Loading dictionary from %s...\n", filename);
  
      // Read all lines into a dynamic array, up to STRESS_LIMIT
-     char **words = NULL;
+     char** words = NULL;
      size_t capacity = 0;
      size_t size = 0;
  
      char line[1024];
      while (fgets(line, sizeof(line), fp) && size < STRESS_LIMIT) {
          // Strip newline
-         char *newline = strchr(line, '\n');
+         char* newline = strchr(line, '\n');
          if (newline) {
              *newline = '\0';
          }
@@ -201,7 +219,7 @@ static bool trie_is_valid(const Trie *trie) {
          // Expand array if needed
          if (size == capacity) {
              capacity = (capacity == 0) ? 256 : capacity * 2;
-             words = (char **)realloc(words, capacity * sizeof(char *));
+             words = (char**)realloc(words, capacity * sizeof(char*));
              assert(words && "Memory reallocation failed for words array");
          }
          // Store a copy of this word
@@ -219,7 +237,7 @@ static bool trie_is_valid(const Trie *trie) {
      printf("[STRESS TEST] Read %zu words into memory.\n", size);
  
      // Create trie
-     Trie *trie = trie_create();
+     Trie* trie = trie_create();
      assert(trie && "Failed to create trie for stress test");
  
      // (1) Insert each word, then check
@@ -267,6 +285,7 @@ static bool trie_is_valid(const Trie *trie) {
      printf("[STRESS TEST] Completed all insert/delete checks (limit=%d).\n", STRESS_LIMIT);
  }
  
+ 
  /*
   * Driver function that runs both basic and stress tests on the Trie.
   */
@@ -278,5 +297,5 @@ static bool trie_is_valid(const Trie *trie) {
      test_stress_trie();
  
      printf("\nAll tests passed!\n");
-}
-
+ }
+ 

@@ -7,44 +7,62 @@
 /* Include your external Unicode library header: */
 #include "../Tools/Unicode/unicode.h"
 
-/* Include the trie header */
+/* Include our trie and dynamic array headers */
 #include "trie.h"
+#include "../DynamicArray/dynamic_array.h"
 
+/* 
+ * Each element in the TrieNode's 'children' array will be:
+ *   - codepoint: the Unicode code point
+ *   - child: pointer to the next TrieNode
+ */
+typedef struct {
+    int32_t   codepoint;
+    TrieNode* child;
+} ChildEntry;
 
 /* --------------------- Node Creation and Freeing ---------------------- */
 
 /*
- * Creates and returns a new TrieNode with no children and no end-of-word count.
+ * Creates and returns a new TrieNode with an empty DynamicArray of children.
  */
-static TrieNode *create_trie_node(void) {
-    TrieNode *node = (TrieNode *)malloc(sizeof(TrieNode));
+static TrieNode* create_trie_node(void) {
+    TrieNode* node = (TrieNode*) malloc(sizeof(TrieNode));
     if (!node) {
         fprintf(stderr, "Memory allocation failed for TrieNode.\n");
         exit(EXIT_FAILURE);
     }
-    node->is_end_of_word = false;
+    node->is_end_of_word   = false;
     node->end_of_word_count = 0;
-    node->children = NULL;  // ChildMap linked list starts empty
+    
+    // Initialize the dynamic array for children
+    daInit(&node->children, 4);  // start with some small capacity (e.g., 4)
+    
     return node;
 }
 
 /*
  * Recursively frees a TrieNode and its entire subtree.
  */
-static void free_node(TrieNode *node) {
+static void free_node(TrieNode* node) {
     if (!node) return;
-    ChildMap *cm = node->children;
-    while (cm) {
-        ChildMap *next = cm->next;
-        free_node(cm->child);
-        free(cm);
-        cm = next;
+
+    // Free each child's subtree
+    size_t n = daSize(&node->children);
+    for (size_t i = 0; i < n; i++) {
+        ChildEntry* entry = (ChildEntry*) daGetMutable(&node->children, i);
+        free_node(entry->child);
     }
+    
+    // Free the dynamic array itself
+    daFree(&node->children);
+    
+    // Finally free this node
     free(node);
 }
 
-Trie *trie_create(void) {
-    Trie *trie = (Trie *)malloc(sizeof(Trie));
+Trie* trie_create(void) {
+    Trie* trie = (Trie*) malloc(sizeof(Trie));
     if (!trie) {
         fprintf(stderr, "Memory allocation failed for Trie.\n");
         exit(EXIT_FAILURE);
@@ -53,97 +71,95 @@ Trie *trie_create(void) {
     return trie;
 }
 
-void trie_free(Trie *trie) {
+void trie_free(Trie* trie) {
     if (!trie) return;
     free_node(trie->root);
     free(trie);
 }
 
-/* --------------------- ChildMap Handling ---------------------- */
+/* --------------------- Child Lookup Helpers ---------------------- */
 
 /*
- * Looks in node->children for an entry matching `codepoint`.
- * Returns pointer to that ChildMap entry, or NULL if not found.
+ * Finds an existing child entry by codepoint.
+ * Returns a pointer to the matching ChildEntry in node->children, or NULL if not found.
  */
-static ChildMap *find_child_entry(const TrieNode *node, int32_t codepoint) {
-    ChildMap *cm = node->children;
-    while (cm) {
-        if (cm->codepoint == codepoint) {
-            return cm;
+static ChildEntry* find_child_entry(const TrieNode* node, int32_t codepoint) {
+    size_t n = daSize(&node->children);
+    for (size_t i = 0; i < n; i++) {
+        ChildEntry* entry = (ChildEntry*) daGetMutable((DynamicArray*)&node->children, i);
+        if (entry->codepoint == codepoint) {
+            return entry;
         }
-        cm = cm->next;
     }
     return NULL;
 }
 
 /*
  * If there's already a child for `codepoint`, return it.
- * Otherwise, create a new ChildMap entry + TrieNode child, link it, and return it.
+ * Otherwise, create a new ChildEntry + child node, append it, and return the pointer.
  */
-static ChildMap *get_or_create_child_entry(TrieNode *node, int32_t codepoint) {
-    ChildMap *found = find_child_entry(node, codepoint);
+static ChildEntry* get_or_create_child_entry(TrieNode* node, int32_t codepoint) {
+    // Check if child already exists
+    ChildEntry* found = find_child_entry(node, codepoint);
     if (found) {
         return found;
     }
     // Not found, create new
-    ChildMap *new_entry = (ChildMap *)malloc(sizeof(ChildMap));
-    if (!new_entry) {
-        fprintf(stderr, "Failed to allocate ChildMap.\n");
-        exit(EXIT_FAILURE);
-    }
-    new_entry->codepoint = codepoint;
-    new_entry->child = create_trie_node();
-    new_entry->next = node->children;  // insert at head of linked list
-    node->children = new_entry;
-    return new_entry;
+    ChildEntry newEntry;
+    newEntry.codepoint = codepoint;
+    newEntry.child     = create_trie_node();
+
+    // Push into dynamic array
+    daPushBack(&node->children, &newEntry, sizeof(newEntry));
+    
+    // The array might reallocate, so we retrieve the pointer to the newly added element
+    size_t newIndex = daSize(&node->children) - 1;
+    return (ChildEntry*) daGetMutable(&node->children, newIndex);
 }
 
 /*
- * Removes the ChildMap entry for `codepoint` from node->children (if it exists),
+ * Removes the entry for `codepoint` from node->children (if it exists),
  * but does NOT free the child node itself (caller must handle that).
  *
  * Returns true if the entry was found and removed, false otherwise.
  */
-static bool remove_child_entry(TrieNode *node, int32_t codepoint) {
-    ChildMap *prev = NULL;
-    ChildMap *cm = node->children;
-    while (cm) {
-        if (cm->codepoint == codepoint) {
-            // Unlink this entry
-            if (!prev) {
-                node->children = cm->next;
-            } else {
-                prev->next = cm->next;
+static bool remove_child_entry(TrieNode* node, int32_t codepoint) {
+    size_t n = daSize(&node->children);
+    for (size_t i = 0; i < n; i++) {
+        ChildEntry* entry = (ChildEntry*) daGetMutable(&node->children, i);
+        if (entry->codepoint == codepoint) {
+            // Swap this entry with the last one, then pop
+            if (i != n - 1) {
+                // Get pointer to the last element
+                ChildEntry* last = (ChildEntry*) daGetMutable(&node->children, n - 1);
+                // Swap
+                ChildEntry temp = *last;
+                *last = *entry;
+                *entry = temp;
             }
-            free(cm);
+            // Now pop back to remove the last element
+            daPopBack(&node->children, NULL, NULL);
             return true;
         }
-        prev = cm;
-        cm = cm->next;
     }
     return false;
 }
 
 /* --------------------- Insert / Search / StartsWith ---------------------- */
 
-/*
- * Inserts a UTF-8 string into the trie:
- *   - For each code point, find/create a child node.
- *   - Mark the final node as an end of word, incrementing its end_of_word_count.
- */
-void trie_insert(Trie *trie, const char *utf8_key) {
+void trie_insert(Trie* trie, const char* utf8_key) {
     if (!trie || !utf8_key) return;
 
-    TrieNode *current = trie->root;
-    const char *p = utf8_key;
+    TrieNode* current = trie->root;
+    const char* p = utf8_key;
 
     while (true) {
-        int32_t code = utf8_next_codepoint(&p);  // from ../Tools/unicode.h
+        int32_t code = utf8_next_codepoint(&p);
         if (code < 0) {
             // code < 0 => end of string or invalid sequence
             break;
         }
-        ChildMap *entry = get_or_create_child_entry(current, code);
+        ChildEntry* entry = get_or_create_child_entry(current, code);
         current = entry->child;
     }
     // Mark the final node
@@ -151,16 +167,11 @@ void trie_insert(Trie *trie, const char *utf8_key) {
     current->end_of_word_count++;
 }
 
-/*
- * Searches for a UTF-8 string in the trie.
- *   - For each code point, follow the correct child if it exists.
- *   - If we reach the end, we check if is_end_of_word && end_of_word_count > 0.
- */
-bool trie_search(const Trie *trie, const char *utf8_key) {
+bool trie_search(const Trie* trie, const char* utf8_key) {
     if (!trie || !utf8_key) return false;
 
-    TrieNode *current = trie->root;
-    const char *p = utf8_key;
+    TrieNode* current = trie->root;
+    const char* p = utf8_key;
 
     while (true) {
         int32_t code = utf8_next_codepoint(&p);
@@ -168,39 +179,35 @@ bool trie_search(const Trie *trie, const char *utf8_key) {
             // end or invalid => stop
             break;
         }
-        ChildMap *found = find_child_entry(current, code);
+        ChildEntry* found = find_child_entry(current, code);
         if (!found) {
-            // No child => word not present
+            // No matching child => word not present
             return false;
         }
         current = found->child;
     }
 
-    // We have consumed all code points. For it to be a valid word,
-    // the node must be is_end_of_word with a positive count
+    // We've consumed all code points. For it to be a valid word,
+    // the node must be marked as an end and have a positive count.
     return (current->is_end_of_word && current->end_of_word_count > 0);
 }
 
-/*
- * Checks if there is any stored word that begins with the given UTF-8 prefix.
- *   - Similar to search, but we don't require the final node to be an end-of-word.
- *   - If we can follow the prefix, we return true.
- */
-bool trie_starts_with(const Trie *trie, const char *utf8_prefix) {
+bool trie_starts_with(const Trie* trie, const char* utf8_prefix) {
     if (!trie || !utf8_prefix) return false;
 
-    TrieNode *current = trie->root;
-    const char *p = utf8_prefix;
+    TrieNode* current = trie->root;
+    const char* p = utf8_prefix;
 
     while (true) {
         int32_t code = utf8_next_codepoint(&p);
         if (code < 0) {
-            // we've reached the end of prefix or invalid => prefix satisfied
+            // Reached end of prefix or invalid => prefix matched
             return true;
         }
-        ChildMap *found = find_child_entry(current, code);
+        ChildEntry* found = find_child_entry(current, code);
         if (!found) {
-            return false; // can't follow the prefix
+            // Can't continue the prefix
+            return false;
         }
         current = found->child;
     }
@@ -210,67 +217,58 @@ bool trie_starts_with(const Trie *trie, const char *utf8_prefix) {
 
 /*
  * A recursive helper that deletes one occurrence of 'utf8_key'.
- * Returns true if the current node can be freed by its parent.
+ * Returns true if the current node can be freed (i.e., removed) by its parent.
  */
-static bool trie_delete_helper(TrieNode *node, const char *utf8_key) {
+static bool trie_delete_helper(TrieNode* node, const char* utf8_key) {
     if (!node || !utf8_key) return false;
 
-    // Read the next code point from utf8_key
-    const char *p = utf8_key;
+    const char* p = utf8_key;
     int32_t code = utf8_next_codepoint(&p);
+
     if (code < 0) {
-        // Reached the end of the string or invalid
+        // Reached end of the string or invalid
         // => this node should represent the end if the word truly exists
         if (node->is_end_of_word && node->end_of_word_count > 0) {
             node->end_of_word_count--;
             if (node->end_of_word_count == 0) {
                 node->is_end_of_word = false;
             }
-            // If no children remain, we can free this node
-            if (!node->is_end_of_word && !node->children) {
+            // If no children remain, signal that we can free this node
+            if (!node->is_end_of_word && daIsEmpty(&node->children)) {
                 return true;
             }
         }
         return false;
     }
 
-    // We have more code points => must go deeper
-    ChildMap *found = find_child_entry(node, code);
+    // Otherwise, go deeper
+    ChildEntry* found = find_child_entry(node, code);
     if (!found) {
-        // word not found in trie
+        // word not found
         return false;
     }
-    TrieNode *childNode = found->child;
+    TrieNode* childNode = found->child;
 
-    // Recursively delete in the child
     bool childCanDie = trie_delete_helper(childNode, p);
     if (childCanDie) {
-        // Free the child's subtree
+        // First, free the child's entire subtree
         free_node(childNode);
-        // Remove the child from node->children
+        // Then remove the child's entry from the array
         remove_child_entry(node, code);
     }
 
-    // After removing that child, if this node is not an end and has no children,
-    // we can also free it (propagate deletion up)
-    if (!node->is_end_of_word && !node->children) {
+    // After potentially removing the child, check if this node is freeable
+    if (!node->is_end_of_word && daIsEmpty(&node->children)) {
         return true;
     }
     return false;
 }
 
-/*
- * Deletes one occurrence of 'utf8_key' from the trie.
- * If the word was inserted multiple times, you must call delete multiple times
- * to remove all occurrences. Returns true if the deletion was attempted
- * (though not strictly whether the word existed).
- */
-bool trie_delete(Trie *trie, const char *utf8_key) {
+bool trie_delete(Trie* trie, const char* utf8_key) {
     if (!trie || !utf8_key) return false;
     trie_delete_helper(trie->root, utf8_key);
-    // We always return true to indicate "we did the delete operation".
-    // If you want to know if the word actually existed, you'd track the
-    // recursion result or check if end_of_word_count was decremented.
+    // Always return true indicating "delete attempted".
+    // If you need to know whether the word was actually present, you'd track
+    // the recursion result or check end_of_word_count changes.
     return true;
 }
-
