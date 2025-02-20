@@ -18,6 +18,7 @@
 #include "BPTree/test_bp_tree.h"
 #include "PriorityQueue/test_pq.h"
 #include "Trie/test_trie.h"
+#include "Tools/test_unicode.h"
 int main(void) {
     // testLinkedList();
     // testStack();
@@ -38,6 +39,7 @@ int main(void) {
 	// testBTree();
     // testBPTree();
     // testPriorityQueue();
+    testUnicode();
     testTrie();
     return 0;
 }

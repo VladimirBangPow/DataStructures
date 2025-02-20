@@ -3,10 +3,15 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
+
+/* Include your external Unicode library header: */
+#include "../Tools/unicode.h"
+
+/* Include the trie header */
 #include "trie.h"
 
-/* 
- * A small helper structure for BFS / DFS to detect cycles.
+/*
+ * A small helper structure for BFS/DFS to detect cycles.
  * We'll store a dynamic array of visited TrieNode pointers.
  */
 typedef struct {
@@ -15,67 +20,11 @@ typedef struct {
     size_t capacity;
 } NodeArray;
 
-/* --------------------- UTF-8 Code Point Handling ---------------------- */
+/* --------------------- Node Creation and Freeing ---------------------- */
 
 /*
- * Reads the next Unicode code point from a UTF-8 string.
- * Returns the code point (>= 0), or -1 on invalid UTF-8.
- * Advances *str to the start of the next character.
+ * Creates and returns a new TrieNode with no children and no end-of-word count.
  */
-static int32_t utf8_next_codepoint(const char **str) {
-    if (!str || !*str) return -1;
-    const unsigned char *s = (const unsigned char *)(*str);
-    if (*s == 0) {
-        return -1; // end of string
-    }
-
-    int32_t code = 0;
-    int bytes = 0;
-
-    // Determine how many bytes in this UTF-8 char
-    if ((*s & 0x80) == 0) {
-        // 1-byte ASCII: 0xxxxxxx
-        code = *s++;
-        bytes = 1;
-    } else if ((*s & 0xe0) == 0xc0) {
-        // 2-byte: 110xxxxx 10xxxxxx
-        code = (*s & 0x1f);
-        s++;
-        bytes = 2;
-    } else if ((*s & 0xf0) == 0xe0) {
-        // 3-byte: 1110xxxx 10xxxxxx 10xxxxxx
-        code = (*s & 0x0f);
-        s++;
-        bytes = 3;
-    } else if ((*s & 0xf8) == 0xf0) {
-        // 4-byte: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
-        code = (*s & 0x07);
-        s++;
-        bytes = 4;
-    } else {
-        // invalid or > 4 bytes
-        (*str) = (const char *)s + 1;
-        return -1;
-    }
-
-    // Pull in the continuation bytes
-    for (int i = 1; i < bytes; i++) {
-        if ((s[0] & 0xc0) != 0x80) {
-            // not a valid continuation
-            (*str) = (const char *)s + 1;
-            return -1;
-        }
-        code = (code << 6) | (s[0] & 0x3f);
-        s++;
-    }
-
-    // Advance the caller's pointer
-    (*str) = (const char *)s;
-    return code;
-}
-
-/* --------------------- Trie Node Creation / Freeing ---------------------- */
-
 static TrieNode *create_trie_node(void) {
     TrieNode *node = (TrieNode *)malloc(sizeof(TrieNode));
     if (!node) {
@@ -84,22 +33,21 @@ static TrieNode *create_trie_node(void) {
     }
     node->is_end_of_word = false;
     node->end_of_word_count = 0;
-    node->children = NULL;
+    node->children = NULL;  // ChildMap linked list starts empty
     return node;
 }
 
 /*
- * Free an entire node subtree recursively.
+ * Recursively frees a TrieNode and its entire subtree.
  */
 static void free_node(TrieNode *node) {
     if (!node) return;
-    // free each child
     ChildMap *cm = node->children;
     while (cm) {
-        ChildMap *tmp = cm->next;
+        ChildMap *next = cm->next;
         free_node(cm->child);
         free(cm);
-        cm = tmp;
+        cm = next;
     }
     free(node);
 }
@@ -123,10 +71,10 @@ void trie_free(Trie *trie) {
 /* --------------------- ChildMap Handling ---------------------- */
 
 /*
- * Find the ChildMap entry matching codepoint.
- * Returns pointer to that entry or NULL if not found.
+ * Looks in node->children for an entry matching `codepoint`.
+ * Returns pointer to that ChildMap entry, or NULL if not found.
  */
-static ChildMap *find_child_entry(TrieNode *node, int32_t codepoint) {
+static ChildMap *find_child_entry(const TrieNode *node, int32_t codepoint) {
     ChildMap *cm = node->children;
     while (cm) {
         if (cm->codepoint == codepoint) {
@@ -138,16 +86,15 @@ static ChildMap *find_child_entry(TrieNode *node, int32_t codepoint) {
 }
 
 /*
- * Insert a new child node for `codepoint` if not already existing.
- * Returns the ChildMap entry (which contains child pointer).
+ * If there's already a child for `codepoint`, return it.
+ * Otherwise, create a new ChildMap entry + TrieNode child, link it, and return it.
  */
 static ChildMap *get_or_create_child_entry(TrieNode *node, int32_t codepoint) {
-    // Check if already exists
     ChildMap *found = find_child_entry(node, codepoint);
     if (found) {
         return found;
     }
-    // Create new
+    // Not found, create new
     ChildMap *new_entry = (ChildMap *)malloc(sizeof(ChildMap));
     if (!new_entry) {
         fprintf(stderr, "Failed to allocate ChildMap.\n");
@@ -155,26 +102,28 @@ static ChildMap *get_or_create_child_entry(TrieNode *node, int32_t codepoint) {
     }
     new_entry->codepoint = codepoint;
     new_entry->child = create_trie_node();
-    new_entry->next = node->children;
+    new_entry->next = node->children;  // insert at head of linked list
     node->children = new_entry;
     return new_entry;
 }
 
 /*
- * Remove the ChildMap for `codepoint` if it exists AND if we want to free that child.
- * Return true if we removed it from the list, false otherwise.
+ * Removes the ChildMap entry for `codepoint` from node->children (if it exists),
+ * but does NOT free the child node itself (caller must handle that).
+ *
+ * Returns true if the entry was found and removed, false otherwise.
  */
 static bool remove_child_entry(TrieNode *node, int32_t codepoint) {
     ChildMap *prev = NULL;
     ChildMap *cm = node->children;
     while (cm) {
         if (cm->codepoint == codepoint) {
+            // Unlink this entry
             if (!prev) {
                 node->children = cm->next;
             } else {
                 prev->next = cm->next;
             }
-            // We do NOT free cm->child here, that’s done by caller if needed
             free(cm);
             return true;
         }
@@ -186,62 +135,81 @@ static bool remove_child_entry(TrieNode *node, int32_t codepoint) {
 
 /* --------------------- Insert / Search / StartsWith ---------------------- */
 
+/*
+ * Inserts a UTF-8 string into the trie:
+ *   - For each code point, find/create a child node.
+ *   - Mark the final node as an end of word, incrementing its end_of_word_count.
+ */
 void trie_insert(Trie *trie, const char *utf8_key) {
     if (!trie || !utf8_key) return;
 
     TrieNode *current = trie->root;
-    const char *p = utf8_key; 
+    const char *p = utf8_key;
+
     while (true) {
-        int32_t code = utf8_next_codepoint(&p);
+        int32_t code = utf8_next_codepoint(&p);  // from ../Tools/unicode.h
         if (code < 0) {
-            // Either end of string or invalid byte => stop
+            // code < 0 => end of string or invalid sequence
             break;
         }
-        // If we reached the null terminator code < 0 indicates end
-        // so let's keep reading until code < 0.
         ChildMap *entry = get_or_create_child_entry(current, code);
         current = entry->child;
     }
-    // Mark end
+    // Mark the final node
     current->is_end_of_word = true;
     current->end_of_word_count++;
 }
 
+/*
+ * Searches for a UTF-8 string in the trie.
+ *   - For each code point, follow the correct child if it exists.
+ *   - If we reach the end, we check if is_end_of_word && end_of_word_count > 0.
+ */
 bool trie_search(const Trie *trie, const char *utf8_key) {
     if (!trie || !utf8_key) return false;
 
     TrieNode *current = trie->root;
     const char *p = utf8_key;
+
     while (true) {
         int32_t code = utf8_next_codepoint(&p);
         if (code < 0) {
-            // Reached end or invalid
+            // end or invalid => stop
             break;
         }
         ChildMap *found = find_child_entry(current, code);
         if (!found) {
+            // No child => word not present
             return false;
         }
         current = found->child;
     }
-    // End => must be a valid word
+
+    // We have consumed all code points. For it to be a valid word,
+    // the node must be is_end_of_word with a positive count
     return (current->is_end_of_word && current->end_of_word_count > 0);
 }
 
+/*
+ * Checks if there is any stored word that begins with the given UTF-8 prefix.
+ *   - Similar to search, but we don't require the final node to be an end-of-word.
+ *   - If we can follow the prefix, we return true.
+ */
 bool trie_starts_with(const Trie *trie, const char *utf8_prefix) {
     if (!trie || !utf8_prefix) return false;
 
     TrieNode *current = trie->root;
     const char *p = utf8_prefix;
+
     while (true) {
         int32_t code = utf8_next_codepoint(&p);
         if (code < 0) {
-            // done reading prefix
-            return true; 
+            // we've reached the end of prefix or invalid => prefix satisfied
+            return true;
         }
         ChildMap *found = find_child_entry(current, code);
         if (!found) {
-            return false;
+            return false; // can't follow the prefix
         }
         current = found->child;
     }
@@ -250,82 +218,77 @@ bool trie_starts_with(const Trie *trie, const char *utf8_prefix) {
 /* --------------------- Delete ---------------------- */
 
 /*
- * Recursive helper for trie_delete().
- * Returns true if this node can be freed by its parent 
- * (i.e., no children remain and not an end of word).
+ * A recursive helper that deletes one occurrence of 'utf8_key'.
+ * Returns true if the current node can be freed by its parent.
  */
 static bool trie_delete_helper(TrieNode *node, const char *utf8_key) {
     if (!node || !utf8_key) return false;
 
-    // We read one code point
+    // Read the next code point from utf8_key
     const char *p = utf8_key;
     int32_t code = utf8_next_codepoint(&p);
     if (code < 0) {
-        // Means we're at the end of the string or invalid
-        // => This node should represent the end
+        // Reached the end of the string or invalid
+        // => this node should represent the end if the word truly exists
         if (node->is_end_of_word && node->end_of_word_count > 0) {
             node->end_of_word_count--;
             if (node->end_of_word_count == 0) {
                 node->is_end_of_word = false;
             }
-            // If no children, can be freed
+            // If no children remain, we can free this node
             if (!node->is_end_of_word && !node->children) {
                 return true;
             }
         }
-        return false; // word didn't exist or still needed
+        return false;
     }
 
-    // code >= 0 => we have more characters
+    // We have more code points => must go deeper
     ChildMap *found = find_child_entry(node, code);
     if (!found) {
-        // word not found
+        // word not found in trie
         return false;
     }
     TrieNode *childNode = found->child;
 
-    // Recurse to see if child can be freed
+    // Recursively delete in the child
     bool childCanDie = trie_delete_helper(childNode, p);
-
     if (childCanDie) {
-        // free the child
+        // Free the child's subtree
         free_node(childNode);
-        // remove from linked list
+        // Remove the child from node->children
         remove_child_entry(node, code);
     }
 
-    // If we removed that child, check if the current node can be freed
+    // After removing that child, if this node is not an end and has no children,
+    // we can also free it (propagate deletion up)
     if (!node->is_end_of_word && !node->children) {
         return true;
     }
     return false;
 }
 
+/*
+ * Deletes one occurrence of 'utf8_key' from the trie.
+ * If the word was inserted multiple times, you must call delete multiple times
+ * to remove all occurrences. Returns true if the deletion was attempted
+ * (though not strictly whether the word existed).
+ */
 bool trie_delete(Trie *trie, const char *utf8_key) {
     if (!trie || !utf8_key) return false;
-
-    // We'll attempt a copy of the key so each recursion can parse from start
-    // BUT we only do 1 codepoint at a time in the helper. 
-    // Another approach is a separate function that consumes 1 codepoint 
-    // from a pointer, but we do it all in one shot here.
-    // 
-    // We'll handle it by the helper reading the entire string from scratch each time 
-    // which is inefficient. 
-    // 
-    // For a simpler approach, we do the entire parse in the helper anyway.
-    // We'll just do it once: 
-    bool can_die = trie_delete_helper(trie->root, utf8_key);
-    // If root can die, that means the Trie is empty (but we don't free root).
-    // We'll keep root around as an empty node.
-    return true; // We can return whether the delete actually found a word.
+    trie_delete_helper(trie->root, utf8_key);
+    // We always return true to indicate "we did the delete operation".
+    // If you want to know if the word actually existed, you'd track the
+    // recursion result or check if end_of_word_count was decremented.
+    return true;
 }
 
 /* --------------------- Validation (Cycle Check) ---------------------- */
 
 /*
- * We'll do a DFS or BFS. If we revisit a node, there's a cycle => invalid.
+ * Returns true if 'arr' already contains 'node'.
  */
-static bool nodearray_contains(const NodeArray *arr, TrieNode *node) {
+static bool nodearray_contains(const NodeArray *arr, const TrieNode *node) {
     for (size_t i = 0; i < arr->size; i++) {
         if (arr->data[i] == node) {
             return true;
@@ -334,24 +297,34 @@ static bool nodearray_contains(const NodeArray *arr, TrieNode *node) {
     return false;
 }
 
+/*
+ * Pushes 'node' onto the visited array, resizing if needed.
+ */
 static void nodearray_push(NodeArray *arr, TrieNode *node) {
     if (arr->size == arr->capacity) {
         arr->capacity *= 2;
         arr->data = (TrieNode **)realloc(arr->data, arr->capacity * sizeof(TrieNode *));
+        if (!arr->data) {
+            fprintf(stderr, "Realloc failed while doing trie validation.\n");
+            exit(EXIT_FAILURE);
+        }
     }
     arr->data[arr->size++] = node;
 }
 
+/*
+ * DFS to detect cycles: if we revisit a node, there's a cycle => invalid.
+ */
 static bool trie_is_valid_dfs(TrieNode *node, NodeArray *visited) {
     if (!node) return true;
 
-    // If we've seen this node, cycle
+    // If we've seen this node already => cycle
     if (nodearray_contains(visited, node)) {
         return false;
     }
     nodearray_push(visited, node);
 
-    // For each child
+    // Visit children
     ChildMap *cm = node->children;
     while (cm) {
         if (!trie_is_valid_dfs(cm->child, visited)) {
@@ -359,16 +332,20 @@ static bool trie_is_valid_dfs(TrieNode *node, NodeArray *visited) {
         }
         cm = cm->next;
     }
-
     return true;
 }
 
 bool trie_is_valid(const Trie *trie) {
     if (!trie || !trie->root) return false;
+
     NodeArray visited;
     visited.size = 0;
     visited.capacity = 128;
     visited.data = (TrieNode **)malloc(visited.capacity * sizeof(TrieNode *));
+    if (!visited.data) {
+        fprintf(stderr, "Memory allocation failed in trie_is_valid.\n");
+        return false;
+    }
 
     bool ok = trie_is_valid_dfs(trie->root, &visited);
     free(visited.data);
