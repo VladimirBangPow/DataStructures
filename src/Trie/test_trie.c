@@ -24,6 +24,86 @@
  #ifndef STRESS_LIMIT
  #define STRESS_LIMIT 2000
  #endif
+
+
+ /* --------------------- Validation (Cycle Check) ---------------------- */
+/*
+ * A small helper structure for BFS/DFS to detect cycles.
+ * We'll store a dynamic array of visited TrieNode pointers.
+ */
+typedef struct {
+    TrieNode **data;
+    size_t size;
+    size_t capacity;
+} NodeArray;
+
+/*
+ * Returns true if 'arr' already contains 'node'.
+ */
+static bool nodearray_contains(const NodeArray *arr, const TrieNode *node) {
+    for (size_t i = 0; i < arr->size; i++) {
+        if (arr->data[i] == node) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/*
+ * Pushes 'node' onto the visited array, resizing if needed.
+ */
+static void nodearray_push(NodeArray *arr, TrieNode *node) {
+    if (arr->size == arr->capacity) {
+        arr->capacity *= 2;
+        arr->data = (TrieNode **)realloc(arr->data, arr->capacity * sizeof(TrieNode *));
+        if (!arr->data) {
+            fprintf(stderr, "Realloc failed while doing trie validation.\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+    arr->data[arr->size++] = node;
+}
+
+/*
+ * DFS to detect cycles: if we revisit a node, there's a cycle => invalid.
+ */
+static bool trie_is_valid_dfs(TrieNode *node, NodeArray *visited) {
+    if (!node) return true;
+
+    // If we've seen this node already => cycle
+    if (nodearray_contains(visited, node)) {
+        return false;
+    }
+    nodearray_push(visited, node);
+
+    // Visit children
+    ChildMap *cm = node->children;
+    while (cm) {
+        if (!trie_is_valid_dfs(cm->child, visited)) {
+            return false;
+        }
+        cm = cm->next;
+    }
+    return true;
+}
+
+static bool trie_is_valid(const Trie *trie) {
+    if (!trie || !trie->root) return false;
+
+    NodeArray visited;
+    visited.size = 0;
+    visited.capacity = 128;
+    visited.data = (TrieNode **)malloc(visited.capacity * sizeof(TrieNode *));
+    if (!visited.data) {
+        fprintf(stderr, "Memory allocation failed in trie_is_valid.\n");
+        return false;
+    }
+
+    bool ok = trie_is_valid_dfs(trie->root, &visited);
+    free(visited.data);
+    return ok;
+}
+
  
  /*
   * A small helper to print a progress bar to the terminal.

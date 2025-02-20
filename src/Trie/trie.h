@@ -32,6 +32,5 @@ bool trie_search(const Trie *trie, const char *utf8_key);
 bool trie_starts_with(const Trie *trie, const char *utf8_prefix);
 
 bool trie_delete(Trie *trie, const char *utf8_key);
-bool trie_is_valid(const Trie *trie);
 
 #endif
