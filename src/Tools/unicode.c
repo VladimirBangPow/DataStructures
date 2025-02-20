@@ -4,10 +4,90 @@
 #include <stdio.h>    // for fprintf
 #include <stdbool.h>  // for bool
 #include <string.h>   // for memcpy
+#include <stdint.h>
+#include <stddef.h>
 
-/*
- * Reads the next Unicode code point from a UTF-8 string.
- * (Already discussed in prior examples.)
+/**
+ * decode_utf8_codepoint_no_bits:
+ *   Attempts to decode a single Unicode code point from the bytes at ptr.
+ *
+ *   On success:
+ *     - returns the decoded code point (>= 0).
+ *     - sets *bytes_used = number of bytes consumed (1..4).
+ *   On failure:
+ *     - returns -1.
+ *     - sets *bytes_used to how many bytes we attempted/consumed.
+ */
+static int32_t decode_utf8_codepoint_no_bits(const unsigned char *ptr, int *bytes_used) {
+    // If we see a 0 byte => end of string
+    if (*ptr == 0) {
+        *bytes_used = 0;
+        return -1;
+    }
+
+    unsigned char b0 = ptr[0];
+    int32_t code = 0;
+    int needed = 0;
+
+    // 1) Determine how many bytes by checking decimal ranges.
+    //    (Normally we'd check leading bits with e.g. (b0 & 0xE0) == 0xC0,
+    //     but here we do it purely by comparing decimal values.)
+    if (b0 < 128) {
+        // 0 <= b0 <= 127 => 1-byte sequence (ASCII)
+        code = b0; // just that byte
+        needed = 1;
+    }
+    else if (b0 >= 192 && b0 < 224) {
+        // 192..223 => 2-byte sequence
+        // The top bits are "110xxxxx" in binary, but we interpret them by decimal offset.
+        // e.g., if b0=194 => code = (194 - 192)=2 => that represents the top 5 bits
+        code = b0 - 192; 
+        needed = 2;
+    }
+    else if (b0 >= 224 && b0 < 240) {
+        // 224..239 => 3-byte sequence
+        code = b0 - 224;
+        needed = 3;
+    }
+    else if (b0 >= 240 && b0 < 248) {
+        // 240..247 => 4-byte sequence
+        code = b0 - 240;
+        needed = 4;
+    }
+    else {
+        // invalid or > 4-byte
+        *bytes_used = 1; // skip one byte to avoid getting stuck
+        return -1;
+    }
+
+    // 2) Read the continuation bytes. Each should be 128..191 (decimal).
+    //    In bit terms, that’s 10xxxxxx (0x80..0xBF).
+    for (int i = 1; i < needed; i++) {
+        unsigned char bn = ptr[i];
+        if (bn < 128 || bn >= 192) {
+            // not a valid continuation (should be 128..191)
+            *bytes_used = i;
+            return -1;
+        }
+        // SHIFT code by 6 bits => "code = code << 6", but we do decimal:
+        //   code = code * 64
+        code = code * 64;
+
+        // ADD the lower 6 bits => "code |= bn & 0x3F", but we do decimal:
+        //   code = code + (bn - 128)
+        code = code + (bn - 128);
+    }
+
+    *bytes_used = needed;
+    return code;
+}
+
+/**
+ * utf8_next_codepoint:
+ *   A user-facing function that decodes the next code point from *str,
+ *   updates *str to point after that character, and returns the code point or -1 on error.
+ *
+ *   This mimics the typical "utf8_next_codepoint" style but avoids bit ops.
  */
 int32_t utf8_next_codepoint(const char **str) {
     if (!str || !*str) return -1;
@@ -16,98 +96,115 @@ int32_t utf8_next_codepoint(const char **str) {
         return -1; // end of string
     }
 
-    int32_t code = 0;
-    int bytes = 0;
-
-    // Determine how many bytes in this UTF-8 char
-    if ((s[0] & 0x80) == 0) {
-        // 1-byte ASCII: 0xxxxxxx
-        code = s[0];
-        s++;
-        bytes = 1;
-    } else if ((s[0] & 0xe0) == 0xc0) {
-        // 2-byte: 110xxxxx 10xxxxxx
-        code = (s[0] & 0x1f);
-        s++;
-        bytes = 2;
-    } else if ((s[0] & 0xf0) == 0xe0) {
-        // 3-byte: 1110xxxx 10xxxxxx 10xxxxxx
-        code = (s[0] & 0x0f);
-        s++;
-        bytes = 3;
-    } else if ((s[0] & 0xf8) == 0xf0) {
-        // 4-byte: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
-        code = (s[0] & 0x07);
-        s++;
-        bytes = 4;
-    } else {
-        // invalid or >4-byte UTF-8
+    int bytes_used = 0;
+    int32_t code = decode_utf8_codepoint_no_bits(s, &bytes_used);
+    if (code < 0) {
+        // error => skip 1 byte to avoid infinite loop
         (*str) = (const char *)(s + 1);
         return -1;
     }
 
-    // Pull in the continuation bytes
-    for (int i = 1; i < bytes; i++) {
-        if ((s[0] & 0xc0) != 0x80) {
-            // not a valid continuation
-            (*str) = (const char *)(s + 1);
-            return -1;
-        }
-        code = (code << 6) | (s[0] & 0x3f);
-        s++;
-    }
+    // Advance pointer by the number of bytes we used
+    s += bytes_used;
 
-    // Surrogate check and range check
-    if (code < 0 || code > 0x10FFFF) {
-        (*str) = (const char *)s;
-        return -1;
-    }
-    // Surrogates 0xD800..0xDFFF => invalid in UTF-8
-    if (code >= 0xD800 && code <= 0xDFFF) {
+    // Range checks:
+    //  - code > 0x10FFFF => invalid in Unicode
+    //  - code in 0xD800..0xDFFF => surrogate => invalid for UTF-8
+    if (code > 0x10FFFF || (code >= 0xD800 && code <= 0xDFFF)) {
         (*str) = (const char *)s;
         return -1;
     }
 
-    // Advance the caller's pointer
+    // success
     (*str) = (const char *)s;
     return code;
 }
 
 /*
- * Encodes a single Unicode code point into UTF-8 bytes.
- * Returns number of bytes (1..4), or 0 if invalid.
+ * utf8_encode_codepoint_no_bits:
+ *   Encodes `codepoint` into the array `out[4]` using UTF-8 rules, but
+ *   avoids bitwise operators. Returns how many bytes were written (1..4),
+ *   or 0 if `codepoint` is invalid.
+ *
+ *   You can expand the comments to see how the arithmetic corresponds
+ *   to splitting bits. (codepoint / 64) is effectively (codepoint >> 6),
+ *   (codepoint % 64) is effectively (codepoint & 0x3F), etc.
  */
 int utf8_encode_codepoint(int32_t codepoint, char out[4]) {
-    // Range check
+    // 1) Basic validity checks
+    //    - codepoint < 0 or > 0x10FFFF => out of Unicode range
+    //    - 0xD800..0xDFFF => surrogates (invalid in UTF-8)
     if (codepoint < 0 || codepoint > 0x10FFFF) {
         return 0;
     }
-    // Surrogates not allowed
     if (codepoint >= 0xD800 && codepoint <= 0xDFFF) {
         return 0;
     }
 
+    // 2) Encode based on range
     if (codepoint <= 0x7F) {
-        // 1-byte
-        out[0] = (char)codepoint;
+        // -- 1-byte sequence --
+        // ASCII: direct
+        // codepoint is in 0..127
+        out[0] = (char)codepoint;  // e.g., 65 => 'A'
         return 1;
+
     } else if (codepoint <= 0x7FF) {
-        // 2-byte
-        out[0] = (char)(0xC0 | (codepoint >> 6));
-        out[1] = (char)(0x80 | (codepoint & 0x3F));
+        // -- 2-byte sequence --
+        // Byte 1: 192..223 (decimal), which is 110xxxxx in binary
+        //   out[0] = 192 + (top 5 bits)
+        // Byte 2: 128..191 (decimal), which is 10xxxxxx in binary
+        //   out[1] = 128 + (lower 6 bits)
+
+        // "top 5 bits" in decimal => codepoint / 64
+        // "lower 6 bits" => codepoint % 64
+        int32_t top5  = codepoint / 64;      // codepoint >> 6
+        int32_t lower6 = codepoint % 64;     // codepoint & 0x3F
+
+        out[0] = (char)(192 + top5);         // 192 = 0xC0
+        out[1] = (char)(128 + lower6);       // 128 = 0x80
         return 2;
+
     } else if (codepoint <= 0xFFFF) {
-        // 3-byte
-        out[0] = (char)(0xE0 | (codepoint >> 12));
-        out[1] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
-        out[2] = (char)(0x80 | (codepoint & 0x3F));
+        // -- 3-byte sequence --
+        // Byte 1: 224..239 => 1110xxxx
+        // Byte 2: 128..191 => 10xxxxxx
+        // Byte 3: 128..191 => 10xxxxxx
+        //
+        // top4 = codepoint / 4096  (like codepoint >> 12)
+        // mid6 = (codepoint / 64) % 64   (like (codepoint >> 6) & 0x3F)
+        // low6 = codepoint % 64   (like codepoint & 0x3F)
+
+        int32_t top4  = codepoint / 4096;  // 64*64 = 4096
+        int32_t mid6  = (codepoint / 64) % 64;
+        int32_t low6  = codepoint % 64;
+
+        out[0] = (char)(224 + top4);   // 224 = 0xE0
+        out[1] = (char)(128 + mid6);   // 128 = 0x80
+        out[2] = (char)(128 + low6);
         return 3;
+
     } else {
-        // 4-byte
-        out[0] = (char)(0xF0 | (codepoint >> 18));
-        out[1] = (char)(0x80 | ((codepoint >> 12) & 0x3F));
-        out[2] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
-        out[3] = (char)(0x80 | (codepoint & 0x3F));
+        // -- 4-byte sequence --
+        // Byte 1: 240..247 => 11110xxx
+        // Byte 2: 128..191 => 10xxxxxx
+        // Byte 3: 128..191 => 10xxxxxx
+        // Byte 4: 128..191 => 10xxxxxx
+        //
+        // top3 = codepoint / 262144   (like >> 18)
+        // mid6a = (codepoint / 4096) % 64
+        // mid6b = (codepoint / 64) % 64
+        // low6  = codepoint % 64
+
+        int32_t top3   = codepoint / 262144;       // 64*64*64 = 262144
+        int32_t mid6a  = (codepoint / 4096) % 64;
+        int32_t mid6b  = (codepoint / 64) % 64;
+        int32_t low6   = codepoint % 64;
+
+        out[0] = (char)(240 + top3);    // 240 = 0xF0
+        out[1] = (char)(128 + mid6a);
+        out[2] = (char)(128 + mid6b);
+        out[3] = (char)(128 + low6);
         return 4;
     }
 }
