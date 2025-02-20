@@ -7,6 +7,7 @@
         "__locale": "c",
         "bitset": "c",
         "unicode.h": "c",
-        "test_unicode.h": "c"
+        "test_unicode.h": "c",
+        "dynamic_array.h": "c"
     }
 }
