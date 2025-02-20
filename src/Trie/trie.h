@@ -11,7 +11,7 @@ typedef struct TrieNode {
     bool    is_end_of_word;   
     int     end_of_word_count;
     // children: dynamic array of TrieNode* (pointers to child nodes)
-    DynamicArray edges;  
+    DynamicArray trieEdges;  
 } TrieNode;
 
 typedef struct Trie {

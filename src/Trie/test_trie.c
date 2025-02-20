@@ -77,7 +77,7 @@
  
  /*
   * DFS to detect cycles: if we revisit a node, there's a cycle => invalid.
-  * NOTE: We now iterate over the dynamic array `node->children`.
+  * NOTE: We now iterate over the dynamic array `node->trieEdges`.
   */
  static bool trie_is_valid_dfs(TrieNode* node, NodeArray* visited) {
      if (!node) return true;
@@ -89,10 +89,10 @@
      nodearray_push(visited, node);
  
      // Visit each child in the dynamic array
-     size_t n = daSize(&node->children);
+     size_t n = daSize(&node->trieEdges);
      for (size_t i = 0; i < n; i++) {
          // We stored (codepoint, child) pairs in the dynamic array
-         ChildEntry* entry = (ChildEntry*) daGetMutable(&node->children, i);
+         ChildEntry* entry = (ChildEntry*) daGetMutable(&node->trieEdges, i);
          if (entry && entry->child) {
              if (!trie_is_valid_dfs(entry->child, visited)) {
                  return false;
