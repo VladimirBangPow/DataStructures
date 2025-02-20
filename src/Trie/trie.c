@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 /* Include your external Unicode library header: */
-#include "../Tools/unicode.h"
+#include "../Tools/Unicode/unicode.h"
 
 /* Include the trie header */
 #include "trie.h"

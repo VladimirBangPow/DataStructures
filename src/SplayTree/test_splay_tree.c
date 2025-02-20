@@ -271,13 +271,13 @@ static void stressTest(void) {
     }
 
     // 6) Delete half of them (randomly chosen)
-    size_t countDeleted = 0;
+    // size_t countDeleted = 0;
     for (size_t i = 0; i < N / 2; i++) {
         int key = rand() % N; // some key in [0, N-1]
-        int delRC = splayTreeDelete(tree, &key);
-        if (delRC == 1) {
-            countDeleted++;
-        }
+        splayTreeDelete(tree, &key);
+        // if (delRC == 1) {
+        //     countDeleted++;
+        // }
         if (i % 100 == 0) {
             assert(splayTreeIsValidBST(tree) == 1);
         }

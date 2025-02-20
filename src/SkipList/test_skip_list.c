@@ -341,7 +341,6 @@ void testSkipList(void)
             {3, 6},
             {1, 2} // duplicate of an existing point
         };
-        const int pointCount = sizeof(pointsToInsert) / sizeof(pointsToInsert[0]);
 
         // We'll insert the first 5 unique ones
         insertPoints(&sl, pointsToInsert, 5);

@@ -5,6 +5,8 @@
         "ratio": "cpp",
         "algorithm": "cpp",
         "__locale": "c",
-        "bitset": "c"
+        "bitset": "c",
+        "unicode.h": "c",
+        "test_unicode.h": "c"
     }
 }

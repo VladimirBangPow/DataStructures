@@ -310,7 +310,6 @@ int64_t utf8_substr(const char *src, int64_t start, int64_t length, char *dst, s
             break;
         }
         // read next code point
-        const char *prev_p = p;
         int32_t c = utf8_next_codepoint(&p);
         if (c < 0) {
             // invalid
@@ -360,7 +359,6 @@ int64_t utf8_find_codepoint(const char *str, int32_t cp) {
     const char *p = str;
     int64_t index = 0;
     while (*p != '\0') {
-        const char *before = p;
         int32_t c = utf8_next_codepoint(&p);
         if (c < 0) {
             // invalid sequence

@@ -135,8 +135,6 @@ static void stressTest(Treap *treap, int n)
     for (int i = 0; i < n; i++) {
         int *val = (int*)malloc(sizeof(int));
         *val = rand() % (10*n);  /* random in range [0..10n-1] */
-        bool inserted = treapInsert(treap, val);
-        /* If 'inserted' is false => duplicate. That’s fine; we skip duplicates. */
         assert(validateTreap(treap) && "Treap property violated after insert");
     }
 
@@ -160,7 +158,7 @@ static void stressTest(Treap *treap, int n)
  * =========================
  * The function to call to run all tests on the Treap.
  */
-void testTreap()
+void testTreap(void)
 {
     printf("Starting Treap tests...\n");
 

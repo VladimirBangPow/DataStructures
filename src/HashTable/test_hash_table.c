@@ -6,25 +6,25 @@
 #include <stdlib.h>
 #include <string.h>
 
-/**
- * A helper function to print all (key, value) pairs in the hash table.
- * This is purely for demonstration/debugging, not required.
- */
-static void printHashTable(const HashTable* ht)
-{
-    printf("HashTable contents:\n");
-    // We'll just iterate through each bucket and print items
-    extern void* htSearch(const HashTable*, const char*);
-    // Actually no need for extern. We'll just read the structure here if we wanted.
-    // But the structure is hidden. We'll just rely on public interface or remove this function.
-    // 
-    // For a real demonstration, we might adapt the code or do it differently.
-    // 
-    // We'll skip an internal iteration or do a quick test approach:
-    // There's no direct iteration function in the public interface.
-    // We'll do something else in test since the structure is hidden.
-    printf("  (No direct iteration implemented in the public interface)\n");
-}
+// /**
+//  * A helper function to print all (key, value) pairs in the hash table.
+//  * This is purely for demonstration/debugging, not required.
+//  */
+// static void printHashTable(const HashTable* ht)
+// {
+//     printf("HashTable contents:\n");
+//     // We'll just iterate through each bucket and print items
+//     extern void* htSearch(const HashTable*, const char*);
+//     // Actually no need for extern. We'll just read the structure here if we wanted.
+//     // But the structure is hidden. We'll just rely on public interface or remove this function.
+//     // 
+//     // For a real demonstration, we might adapt the code or do it differently.
+//     // 
+//     // We'll skip an internal iteration or do a quick test approach:
+//     // There's no direct iteration function in the public interface.
+//     // We'll do something else in test since the structure is hidden.
+//     printf("  (No direct iteration implemented in the public interface)\n");
+// }
 
 /**
  * Tests basic insertion, search, removal, and resizing behavior.

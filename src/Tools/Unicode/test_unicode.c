@@ -20,7 +20,7 @@
  #include <string.h>
  #include <assert.h>
  
- #include "../Tools/unicode.h"   // The library under test
+ #include "unicode.h"   // The library under test
  #include "test_unicode.h"       // Declaration of testUnicode()
  
  /* A helper for printing progress in the stress test */
@@ -344,6 +344,4 @@
      stress_test_all_codepoints();
  
      printf("\nAll Unicode tests passed!\n");
- }
- 
- 
+}
