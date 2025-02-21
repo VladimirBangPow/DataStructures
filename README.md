@@ -641,6 +641,13 @@ Each edge typically represents one character. Enables fast prefix lookups.
 Specialized tree for storing information about intervals, segments (e.g., sums over array ranges).
 Allows O(log n) queries and updates on intervals.
 
+![Seg1](diagrams/SegmentTree1.png "Seg1")
+![Seg2](diagrams/SegmentTree2.png "Seg2")
+![Seg3](diagrams/SegmentTree3.png "Seg3")
+![Seg41](diagrams/SegmentTree41.png "Seg41")
+![Seg5](diagrams/SegmentTree5.png "Seg5")
+
+
 ## Fenwick Tree (Binary Indexed Tree)
 
 A compact structure for cumulative frequency tables or prefix sums.
