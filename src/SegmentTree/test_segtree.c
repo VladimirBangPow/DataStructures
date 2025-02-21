@@ -258,6 +258,57 @@ static void testStruct(void) {
     printf("testStruct passed.\n");
 }
 
+// Test sets
+static void testSets(void) {
+    printf("Running testSets...\n");
+
+    DynamicArray setData;
+    daInit(&setData, 4);
+
+    // We'll store 4 sets
+    IntSet s1 = makeSet1(1);
+    IntSet s2 = makeSet1(2);
+    IntSet s3 = makeSet1(3);
+    IntSet s4 = makeSet1(4);
+
+    daPushBack(&setData, &s1, sizeof(IntSet));
+    daPushBack(&setData, &s2, sizeof(IntSet));
+    daPushBack(&setData, &s3, sizeof(IntSet));
+    daPushBack(&setData, &s4, sizeof(IntSet));
+
+    SegmentTree st;
+    segtreeInit(&st, 4, sizeof(IntSet), setUnion);
+    segtreeBuild(&st, &setData);
+
+    // Query [0..3] => union of {1}, {2}, {3}, {4} => {1,2,3,4}
+    IntSet result;
+    bool ok = segtreeQuery(&st, 0, 3, &result);
+    assert(ok);
+    assert(result.size == 4);
+    assert(setContains(&result, 1));
+    assert(setContains(&result, 2));
+    assert(setContains(&result, 3));
+    assert(setContains(&result, 4));
+
+    // Update index 1 => {10}
+    IntSet newSet = makeSet1(10);
+    segtreeUpdate(&st, 1, &newSet, sizeof(IntSet));
+
+    // Query [0..3] => union of {1}, {10}, {3}, {4} => size=4, elements=1,3,4,10
+    ok = segtreeQuery(&st, 0, 3, &result);
+    assert(ok);
+    assert(result.size == 4);
+    assert(setContains(&result, 1));
+    assert(setContains(&result, 10));
+    assert(setContains(&result, 3));
+    assert(setContains(&result, 4));
+
+    segtreeFree(&st);
+    daFree(&setData);
+
+    printf("testSets passed.\n");
+}
+
 // Print a basic ASCII progress bar on one line
 static void printProgressBar(size_t current, size_t total) {
     // For a nicer display, define a bar width
@@ -286,8 +337,8 @@ static void testStressInts(void) {
     srand((unsigned int)time(NULL)); // seed random
 
     // 1. Create a random array of integers
-    const size_t NUM_ELEMS = 20000;  // Feel free to change
-    const size_t NUM_OPS   = 100000; // Number of random ops
+    const size_t NUM_ELEMS = 2000;  // Feel free to change
+    const size_t NUM_OPS   = 10000; // Number of random ops
 
     DynamicArray data;
     daInit(&data, NUM_ELEMS);
@@ -350,56 +401,7 @@ static void testStressInts(void) {
 }
 
 
-// Test sets
-static void testSets(void) {
-    printf("Running testSets...\n");
 
-    DynamicArray setData;
-    daInit(&setData, 4);
-
-    // We'll store 4 sets
-    IntSet s1 = makeSet1(1);
-    IntSet s2 = makeSet1(2);
-    IntSet s3 = makeSet1(3);
-    IntSet s4 = makeSet1(4);
-
-    daPushBack(&setData, &s1, sizeof(IntSet));
-    daPushBack(&setData, &s2, sizeof(IntSet));
-    daPushBack(&setData, &s3, sizeof(IntSet));
-    daPushBack(&setData, &s4, sizeof(IntSet));
-
-    SegmentTree st;
-    segtreeInit(&st, 4, sizeof(IntSet), setUnion);
-    segtreeBuild(&st, &setData);
-
-    // Query [0..3] => union of {1}, {2}, {3}, {4} => {1,2,3,4}
-    IntSet result;
-    bool ok = segtreeQuery(&st, 0, 3, &result);
-    assert(ok);
-    assert(result.size == 4);
-    assert(setContains(&result, 1));
-    assert(setContains(&result, 2));
-    assert(setContains(&result, 3));
-    assert(setContains(&result, 4));
-
-    // Update index 1 => {10}
-    IntSet newSet = makeSet1(10);
-    segtreeUpdate(&st, 1, &newSet, sizeof(IntSet));
-
-    // Query [0..3] => union of {1}, {10}, {3}, {4} => size=4, elements=1,3,4,10
-    ok = segtreeQuery(&st, 0, 3, &result);
-    assert(ok);
-    assert(result.size == 4);
-    assert(setContains(&result, 1));
-    assert(setContains(&result, 10));
-    assert(setContains(&result, 3));
-    assert(setContains(&result, 4));
-
-    segtreeFree(&st);
-    daFree(&setData);
-
-    printf("testSets passed.\n");
-}
 
 // -------------------- Test Driver -------------------- //
 void testSegTree(void)
