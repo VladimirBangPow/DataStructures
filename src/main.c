@@ -19,6 +19,7 @@
 #include "PriorityQueue/test_pq.h"
 #include "Trie/test_trie.h"
 #include "Tools/Unicode/test_unicode.h"
+#include "SegmentTree/test_segtree.h"
 int main(void) {
     // testLinkedList();
     // testStack();
@@ -39,7 +40,8 @@ int main(void) {
 	// testBTree();
     // testBPTree();
     // testPriorityQueue();
-    testUnicode();
-    testTrie();
+    // testUnicode();
+    // testTrie();
+    testSegTree();
     return 0;
 }
