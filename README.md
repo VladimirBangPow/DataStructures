@@ -644,13 +644,9 @@ Allows O(log n) queries and updates on intervals.
 ![Seg1](diagrams/SegmentTree1.png "Seg1")
 ![Seg2](diagrams/SegmentTree2.png "Seg2")
 ![Seg3](diagrams/SegmentTree3.png "Seg3")
-![Seg4](diagrams/SegmentTree4.png "Seg4")
+![Seg41](diagrams/SegmentTree41.png "Seg41")
 ![Seg5](diagrams/SegmentTree5.png "Seg5")
-![Seg6](diagrams/SegmentTree6.png "Seg6")
-![Seg7](diagrams/SegmentTree7.png "Seg7")
-![Seg8](diagrams/SegmentTree8.png "Seg8")
-![Seg9](diagrams/SegmentTree9.png "Seg9")
-![Seg10](diagrams/SegmentTree10.png "Seg10")
+
 
 ## Fenwick Tree (Binary Indexed Tree)
 
