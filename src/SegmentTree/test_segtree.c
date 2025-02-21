@@ -9,6 +9,66 @@
 
 #include <time.h>
 
+// Forward-declare a helper
+static bool isValidNode(const SegmentTree* st, size_t idx, size_t start, size_t end);
+
+// Check entire Segment Tree for correctness.
+bool segtreeIsValidFull(const SegmentTree* st)
+{
+    if (!st || st->n == 0 || st->elementSize != sizeof(int)) {
+        // Currently we only support checking integer-sum trees in this example
+        return true; // or false, or skip entirely
+    }
+    // The root node is at idx=1, covering [0..n-1]
+    return isValidNode(st, 1, 0, st->n - 1);
+}
+
+static bool isValidNode(const SegmentTree* st, size_t idx, size_t start, size_t end)
+{
+    // If idx is out of range, just ignore (valid enough, no child)
+    if (idx >= daSize(&st->nodes)) {
+        return true;
+    }
+
+    // Retrieve this node's value
+    const int* nodeVal = (const int*)daGet(&st->nodes, idx);
+    if (!nodeVal) {
+        // If there's no data pointer, it's invalid
+        return false;
+    }
+
+    if (start == end) {
+        // Leaf node: no need to compare with children
+        return true;
+    }
+
+    size_t mid = (start + end) / 2;
+    size_t leftIdx = idx * 2;
+    size_t rightIdx = idx * 2 + 1;
+
+    // Check children recursively
+    bool leftOK  = isValidNode(st, leftIdx, start, mid);
+    bool rightOK = isValidNode(st, rightIdx, mid + 1, end);
+
+    if (!leftOK || !rightOK) {
+        return false;
+    }
+
+    // If children are valid, let's see if nodeVal == leftVal + rightVal
+    const int* leftVal  = (const int*)daGet(&st->nodes, leftIdx);
+    const int* rightVal = (const int*)daGet(&st->nodes, rightIdx);
+
+    // The child might not exist if we've not built up that index => skip
+    // But typically, if `_buildSegTree` was correct, children do exist. We'll do a partial check:
+    if (leftVal && rightVal) {
+        int expected = (*leftVal) + (*rightVal);
+        if (*nodeVal != expected) {
+            return false;
+        }
+    }
+
+    return true;
+}
 
 
 // -------------------- Data Structures for Testing -------------------- //

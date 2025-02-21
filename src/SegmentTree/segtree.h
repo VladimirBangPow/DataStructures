@@ -74,7 +74,7 @@ void segtreeUpdate(SegmentTree* st, size_t index, const void* newValue, size_t v
 void segtreeFree(SegmentTree* st);
 
 
-bool segtreeIsValidFull(const SegmentTree* st);
+// bool segtreeIsValidFull(const SegmentTree* st);
 
 #ifdef __cplusplus
 }
@@ -82,58 +82,3 @@ bool segtreeIsValidFull(const SegmentTree* st);
 
 #endif // SEGTREE_H
 
-
-// #ifndef SEG_TREE_H
-// #define SEG_TREE_H
-
-// #ifdef __cplusplus
-// extern "C" {
-// #endif
-
-// /*
-//  * Define a function pointer type for combining two integers.
-//  */
-// typedef int (*CombineFunc)(int, int);
-
-// /*
-//  * SegmentTree structure:
-//  * - n:         the size of the original array
-//  * - tree:      the underlying array storing segment tree nodes
-//  * - combine:   function pointer for combining two segment values
-//  * - identity:  identity element for the combine function 
-//  *              (e.g. 0 for sum, INT_MAX for min, etc.)
-//  */
-// typedef struct {
-//     int n;
-//     int *tree;
-//     CombineFunc combine;
-//     int identity;
-// } SegmentTree;
-
-// /* Create a segment tree for the given array (arr) of length n, with the
-//  * specified combine function and identity element. */
-// SegmentTree* segtree_create(int *arr, int n, CombineFunc combine, int identity);
-
-// /* Free all memory used by the segment tree. */
-// void segtree_destroy(SegmentTree* st);
-
-// /* Query the range [left, right] in the segment tree. */
-// int segtree_query(SegmentTree* st, int left, int right);
-
-// /* Update the value at position index in the array (and reflect in tree). */
-// void segtree_update(SegmentTree* st, int index, int value);
-
-// /*
-//  * Some common combine functions. 
-//  * For example, sum, min, max, gcd, etc.
-//  */
-// int combine_sum(int a, int b);
-// int combine_min(int a, int b);
-// int combine_max(int a, int b);
-// int combine_gcd(int a, int b);
-
-// #ifdef __cplusplus
-// }
-// #endif
-
-// #endif
