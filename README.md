@@ -641,6 +641,36 @@ Each edge typically represents one character. Enables fast prefix lookups.
 Specialized tree for storing information about intervals, segments (e.g., sums over array ranges).
 Allows O(log n) queries and updates on intervals.
 
+A segment tree is a specialized binary tree data structure that stores information about intervals (or segments) of an array. It allows you to efficiently query and update information over a range of indices, making it very useful for problems that require repeated range queries and updates.
+
+### Key Ideas
+#### Divide-and-Conquer Approach:
+- The array is split into two halves recursively until each segment represents a single element.
+- Each node in the tree covers a specific segment of the array, typically identified by a range [𝐿,𝑅]
+
+#### Storing Aggregated Information:
+- Each node stores some information about the segment it represents—common examples include:
+	- Sum of the elements in the segment
+ 	- Minimum or Maximum value in the segment
+  	- Greatest Common Divisor (GCD) of the segment
+- These values in the parent node can be computed by combining values from its children.
+
+#### Fast Queries:
+
+- Once built, a segment tree can answer queries like
+	- “What is the sum of the elements in the range [𝑖,𝑗]?” or
+ 	- “What is the minimum value in [𝑖,𝑗]?”
+  	- in O(log𝑛) time, where 𝑛 is the size of the array.
+
+#### Efficient Updates:
+
+In addition to queries, segment trees handle updates (like changing the value of a single element) in O(log𝑛) time as well.
+After updating a leaf node, you only need to recalculate the information up the tree path to the root.
+
+#### Space Complexity:
+
+A segment tree typically requires about 4n space in the worst case (where 𝑛 is the size of the array), which is still considered 𝑂(𝑛).
+
 ![Seg1](diagrams/SegmentTree1.png "Seg1")
 ![Seg2](diagrams/SegmentTree2.png "Seg2")
 ![Seg3](diagrams/SegmentTree3.png "Seg3")
