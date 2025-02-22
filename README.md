@@ -678,20 +678,27 @@ A segment tree typically requires about 4n space in the worst case (where 𝑛 i
 ![Seg5](diagrams/SegmentTree5.png "Seg5")
 
 
-## Fenwick Tree (Binary Indexed Tree)
-
-A compact structure for cumulative frequency tables or prefix sums.
-Supports O(log n) update and prefix-sum queries.
-Disjoint Set (Union-Find)
-
-Not a tree in the traditional sense, but often implemented with “forest” of trees.
-Tracks elements partitioned into a number of disjoint (non-overlapping) sets. Supports fast union and find operations.
-
 # 3. Graphs and Graph Representations
 ## Graph (in general)
 
 A set of vertices (nodes) connected by edges (links).
 Can be directed, undirected, weighted, or unweighted.
+
+### Undirected Unweighted Graph
+![UndirectedUnweightedGraph](diagrams/UndirectedUnweightedGraph.png "UndirectedUnweightedGraph")
+
+
+### Undirected Weighted Graph
+![UndirectedWeightedGraph](diagrams/UndirectedWeightedGraph.png "UndirectedWeightedGraph")
+
+### Directed Unweighted Graph
+![DirectedUnweightedGraph](diagrams/DirectedUnweightedGraph.png "DirectedUnweightedGraph")
+
+
+### Directed Weighted Graph
+![DirectedWeightedGraph](diagrams/DirectedWeightedGraph.png "DirectedWeightedGraph")
+
+
 
 ## Adjacency List
 
