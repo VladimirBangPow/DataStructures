@@ -27,6 +27,8 @@ all:
 	    Trie/trie.c Trie/test_trie.c \
 	    Tools/Unicode/unicode.c Tools/Unicode/test_unicode.c \
 	    SegmentTree/segtree.c SegmentTree/test_segtree.c \
+		Graph/graph.c Graph/test_graph.c Graph/graph_algorithms.c \
+		DataFrame/dataframe.c DataFrame/test_dataframe.c \
 	    -o main \
 	    -lm
 
@@ -56,6 +58,8 @@ asan:
 	    Trie/trie.c Trie/test_trie.c \
 	    Tools/Unicode/unicode.c Tools/Unicode/test_unicode.c \
 	    SegmentTree/segtree.c SegmentTree/test_segtree.c \
+		Graph/graph.c Graph/test_graph.c Graph/graph_algorithms.c \
+		DataFrame/dataframe.c DataFrame/test_dataframe.c \
 	    -o main_asan \
 	    -lm
 

@@ -20,6 +20,9 @@
 #include "Trie/test_trie.h"
 #include "Tools/Unicode/test_unicode.h"
 #include "SegmentTree/test_segtree.h"
+#include "Graph/test_graph.h"
+#include "DataFrame/test_dataframe.h"
+
 int main(void) {
     // testLinkedList();
     // testStack();
@@ -42,6 +45,8 @@ int main(void) {
     // testPriorityQueue();
     // testUnicode();
     // testTrie();
-    testSegTree();
+    // testSegTree();
+    // testGraph();
+    testDataFrame();
     return 0;
 }
