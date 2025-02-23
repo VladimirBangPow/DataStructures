@@ -134,4 +134,27 @@ void dfPlot(const DataFrame* df,
 bool readCsv(DataFrame* df, const char* filename);
 
 
+
+/**
+ * dfConvertDatesToEpoch:
+ *  Takes a numeric column that represents a date/time and converts
+ *  each value into a Unix timestamp (in seconds or milliseconds).
+ *
+ *  For example, if your data is in 'YYYYMMDD' integer format, we parse
+ *  it into a time_t. Or if you have some other numeric date, we convert accordingly.
+ *
+ *  After this, dfPlot can treat that column as a numeric epoch. Then in the
+ *  generated Python script, we do:
+ *      pd.to_datetime(df_data['time'], unit='ms')
+ *  or 'unit='s'' if we used seconds.
+ *
+ * @param df:          pointer to your DataFrame
+ * @param dateColIndex index of the column in the DataFrame that has numeric date/time
+ * @param formatType:  how the numeric date/time is encoded (e.g.,  'YYYYMMDD', 'excel', 'unix_seconds', etc.)
+ * @param toMillis:    if true, output in milliseconds since epoch; else seconds
+ *
+ * Returns true on success, false on error.
+ */
+bool dfConvertDatesToEpoch(DataFrame* df, size_t dateColIndex, const char* formatType, bool toMillis);
+
 #endif // DATAFRAME_H

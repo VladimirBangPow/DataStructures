@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <time.h>
 #include "dataframe.h"
 #include <ctype.h>
 #include "../DynamicArray/dynamic_array.h"
@@ -864,9 +865,10 @@ void dfPlot(const DataFrame* df,
         // If x is time in milliseconds, for example, you can convert:
         //   df_data['time'] = pd.to_datetime(df_data['time'], unit='ms')
         // If it's just a numeric index, we can skip that. 
+
         // We'll assume a user might have real time in 'x'. Let's try to parse as ms if you want:
         fprintf(pyFile, "# If you want to interpret x as timestamps in ms, uncomment:\n");
-        fprintf(pyFile, "# df_data['time'] = pd.to_datetime(df_data['time'], unit='ms')\n");
+        fprintf(pyFile, "df_data['time'] = pd.to_datetime(df_data['time'], unit='ms')\n");
 
         fprintf(pyFile, "df_data.set_index('time', inplace=True)\n\n");
 
@@ -1216,5 +1218,114 @@ bool readCsv(DataFrame* df, const char* filename) {
 
     free(finalTypes);
     freeCsvBuffer(&cb);
+    return true;
+}
+
+/* -------------------------------------------------------------------------
+ * Date Parsing and Conversion
+ * ------------------------------------------------------------------------- */ 
+/**
+ * parseYYYYMMDD:
+ *   Expects an integer like 20230131 => Jan 31, 2023
+ *   or a double that equals an integer.
+ * Returns time_t (seconds since epoch, UTC 00:00).
+ * On error, returns -1.
+ */
+static time_t parseYYYYMMDD(double num) {
+    // For example, 20230131. 
+    // We'll parse it as an int: YYYYMMDD
+    int dateVal = (int)num;  // cast from double -> int
+    if (dateVal <= 10000101) {
+        // no real checks, but let's do a naive boundary
+        return -1;
+    }
+
+    int year  = dateVal / 10000;        // e.g. 2023
+    int month = (dateVal / 100) % 100;  // e.g. 01 => January
+    int day   = dateVal % 100;         // e.g. 31
+
+    struct tm tinfo;
+    tinfo.tm_year = year - 1900;       // tm_year is years since 1900
+    tinfo.tm_mon  = month - 1;         // tm_mon is 0-based
+    tinfo.tm_mday = day;
+    tinfo.tm_hour = 0;
+    tinfo.tm_min  = 0;
+    tinfo.tm_sec  = 0;
+    tinfo.tm_isdst= -1;  // let mktime guess DST
+
+    time_t seconds = mktime(&tinfo);
+    return (seconds == -1) ? -1 : seconds;
+}
+
+/**
+ * dfConvertDatesToEpoch:
+ *  Convert a numeric date column (e.g. YYYYMMDD) to Unix epoch time.
+ *  If toMillis=true, store milliseconds; else store seconds.
+ *
+ *  formatType can be "YYYYMMDD" or something else if you want to parse differently.
+ */
+bool dfConvertDatesToEpoch(DataFrame* df, size_t dateColIndex, const char* formatType, bool toMillis) {
+    if (!df) return false;
+
+    Series* s = (Series*)daGetMutable(&df->columns, dateColIndex);
+    if (!s) return false;
+
+    if (s->type != DF_INT && s->type != DF_DOUBLE) {
+        fprintf(stderr, "dfConvertDatesToEpoch: column %zu is not numeric.\n", dateColIndex);
+        return false;
+    }
+
+    size_t nRows = seriesSize(s);
+    // We'll read each row's numeric date, parse it, and rewrite it as an epoch
+    for (size_t r = 0; r < nRows; r++) {
+        double numericVal = 0.0;
+        if (s->type == DF_INT) {
+            int v;
+            seriesGetInt(s, r, &v);
+            numericVal = (double)v;
+        } else {
+            seriesGetDouble(s, r, &numericVal);
+        }
+
+        time_t epochSec = 0;
+        if (strcmp(formatType, "YYYYMMDD") == 0) {
+            epochSec = parseYYYYMMDD(numericVal);
+            if (epochSec == (time_t)-1) {
+                // fallback or keep it as is? We'll just store 0 if parse fails
+                epochSec = 0;
+            }
+        } else if (strcmp(formatType, "unix_seconds") == 0) {
+            // then numericVal is already seconds since epoch
+            epochSec = (time_t)numericVal;
+        } else if (strcmp(formatType, "unix_millis") == 0) {
+            // numericVal is milliseconds since epoch
+            // convert to seconds
+            epochSec = (time_t)(numericVal / 1000.0);
+        } else {
+            // default or unknown
+            // If you have your own format, parse accordingly
+            epochSec = 0;
+        }
+
+        // If toMillis, multiply
+        double finalVal = (toMillis) ? (epochSec * 1000.0) : (double)epochSec;
+
+        // Now rewrite the value in the Series
+        if (s->type == DF_INT) {
+            // We can either convert the entire column to DF_DOUBLE or store as int if it fits
+            // If storing as int might overflow for large epoch?
+            int intVal = (int)finalVal;
+            // If it doesn't fit, you might want to fallback to double. We'll just do int here.
+            // Overflows beyond 2038 for 32-bit time_t, so be aware.
+            *(int*)daGetMutable(&s->data, r) = intVal;
+        } else {
+            // DF_DOUBLE
+            *(double*)daGetMutable(&s->data, r) = finalVal;
+        }
+    }
+
+    // The column now holds epoch times in either seconds or milliseconds
+    // That is enough for you to do "pd.to_datetime(..., unit='s' or 'ms')" in the python script.
+
     return true;
 }
