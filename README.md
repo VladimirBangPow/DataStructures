@@ -699,6 +699,70 @@ Can be directed, undirected, weighted, or unweighted.
 ![DirectedWeightedGraph](diagrams/DirectedWeightedGraph.png "DirectedWeightedGraph")
 
 
+In essence, the core logic of BFS, DFS, or Dijkstra’s remains the same regardless of whether the graph is directed or undirected, weighted or unweighted. However, there are small but important adjustments in how you apply each algorithm to different graph types:
+
+### 1. BFS
+- Purpose: Typically used for unweighted graphs (or graphs where every edge has the same cost) to find the shortest path in terms of the number of edges, or to explore all connected vertices from a starting point.
+
+#### Undirected vs. Directed
+
+- In an undirected graph, you follow edges in both directions automatically.
+- In a directed graph, you only follow edges in the forward direction (i.e., if there’s an edge 𝑢→𝑣, but not 𝑣→𝑢, you only enqueue v when you’re at 𝑢).
+
+#### Weighted vs. Unweighted
+
+- BFS inherently doesn’t handle varying weights.
+- If all edges have the same weight (e.g., weight = 1), BFS still finds the shortest path in terms of “number of edges” (or total uniform cost).
+- If the graph has different weights, BFS is no longer suitable for shortest paths, and you’d typically use Dijkstra or another weighted shortest-path algorithm.
+
+##### Summary: The BFS procedure itself does not change much—just respect the direction of edges if the graph is directed. If the graph is weighted with different costs, BFS won’t give the true minimal-cost path.
+
+### 2. DFS
+- Purpose: Depth-first search is used mostly to explore or check connectivity, detect cycles, or do topological sorts (in directed acyclic graphs), etc. It doesn’t care about edge weights when simply exploring.
+
+#### Undirected vs. Directed
+- In an undirected graph, you can move both ways between connected vertices.
+- In a directed graph, you only traverse in the allowed direction.
+
+#### Weighted vs. Unweighted
+
+- DFS makes no use of weights in the standard algorithm.
+- You can ignore weights or treat them as present but irrelevant.
+
+##### Summary: DFS is unaffected by weights. The only difference between undirected and directed is whether you consider edges in both directions (undirected) or in the specified direction only (directed).
+
+### 3. Dijkstra’s Algorithm
+- Purpose: Finds the shortest path in a graph where edges have nonnegative weights.
+
+#### Undirected vs. Directed
+
+- Conceptually, Dijkstra’s logic is the same:
+- Keep track of a “distance” array.
+- Use a priority queue (min-heap) to pick the next closest vertex.
+- Update (relax) distances to neighbors.
+- In an undirected graph, each undirected edge (𝑢,𝑣) is stored internally as two directed edges 𝑢→𝑣 and 𝑣→𝑢.
+- The algorithm still relaxes edges from each node to its neighbors.
+- In a directed graph, edges are only in one direction.
+- You only relax edges 𝑢→𝑣 if they exist.
+
+#### Weighted vs. Unweighted
+
+- Weighted (nonnegative): Dijkstra is the standard choice to get the minimal total cost path.
+- Unweighted: Dijkstra still “works” but is overkill—BFS is typically simpler and more efficient if all edges have the same cost (like weight = 1).
+- If there are negative edge weights, you need a different algorithm (e.g., Bellman-Ford).
+
+##### Summary: The Dijkstra procedure is the same. The difference is in how edges are stored (two directions for undirected vs. one for directed) and whether each edge has a real cost or a uniform cost.
+
+### Bottom Line
+- The fundamental BFS/DFS logic doesn’t really change; you just decide whether an edge (𝑢,𝑣)
+- (u,v) exists in one direction or both.
+- Weights do not affect BFS or DFS unless all weights are the same (in which case BFS can still find the shortest path in “hops”) or you are ignoring weights entirely (typical for DFS).
+- Dijkstra is always the same “relaxation + priority queue” approach.
+- The only variation is in how you build your adjacency list or matrix for directed vs. undirected edges.
+- So the algorithms themselves are conceptually the same across the different graph “types.” The real difference is whether or not you:
+- Consider edges in both directions (undirected) vs. one direction (directed).
+- Use or ignore edge weights (for BFS/DFS, you ignore them; for Dijkstra, you use them if they are nonnegative).
+
 
 ## Adjacency List
 
