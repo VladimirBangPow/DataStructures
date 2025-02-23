@@ -122,4 +122,16 @@ void dfPlot(const DataFrame* df,
     const char* plotType,
     const char* outputFile);
 
+
+/**
+ * readCsv:
+ *  - Creates columns based on the header line in the CSV.
+ *  - Guesses types from the first data line (int, double, or fallback to string).
+ *  - Loads all rows into the DataFrame.
+ *
+ * Returns true on success, false on failure.
+ */
+bool readCsv(DataFrame* df, const char* filename);
+
+
 #endif // DATAFRAME_H

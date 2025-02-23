@@ -3,7 +3,10 @@
 #include <string.h>
 #include <stdbool.h>
 #include "dataframe.h"
+#include <ctype.h>
 #include "../DynamicArray/dynamic_array.h"
+#define MAX_LINE_LEN  4096
+#define MAX_COLS      1024
 
 /* -------------------------------------------------------------------------
  * Helper: Duplicate string safely
@@ -682,26 +685,44 @@ static bool getNumericValue(const Series* s, size_t index, double* outVal);
  * A small utility: attempt to retrieve numeric data (int or double)
  * from a Series at a given row. Return as a double.
  */
+/**
+ * Helper: getNumericValue
+ * Attempt to retrieve a numeric value (int or double) from a Series row, 
+ * store it in *outVal as a double. Returns false if out of range or not numeric.
+ */
 static bool getNumericValue(const Series* s, size_t index, double* outVal) {
     if (!s || !outVal) return false;
-    if (index >= daSize(&s->data)) return false;
+    if (index >= seriesSize(s)) return false;
 
     if (s->type == DF_INT) {
         int temp;
         if (!seriesGetInt(s, index, &temp)) return false;
         *outVal = (double)temp;
         return true;
-    } else if (s->type == DF_DOUBLE) {
+    }
+    else if (s->type == DF_DOUBLE) {
         double temp;
         if (!seriesGetDouble(s, index, &temp)) return false;
         *outVal = temp;
         return true;
     }
+    // Not a numeric column
     return false;
 }
 
 /**
- * dfPlot Implementation (see prototype in dataframe.h)
+ * dfPlot:
+ * Generates a temporary Python script that uses matplotlib (and optionally mplfinance)
+ * to plot DataFrame columns. Supports:
+ *  - "line" (default)
+ *  - "scatter"
+ *  - "hloc" (candlestick), requires exactly 4 y columns: open, high, low, close
+ *
+ * xColIndex = -1 uses the row index as X.
+ * Otherwise we expect xColIndex to be numeric (int/double).
+ * All yColumns must be numeric (int/double).
+ *
+ * If outputFile is non-empty, we call plt.savefig(...), else plt.show() for an interactive window.
  */
 void dfPlot(const DataFrame* df,
             size_t xColIndex,
@@ -714,7 +735,9 @@ void dfPlot(const DataFrame* df,
         fprintf(stderr, "dfPlot Error: DataFrame is NULL.\n");
         return;
     }
-    if (dfNumRows(df) == 0 || dfNumColumns(df) == 0) {
+    size_t nRows = dfNumRows(df);
+    size_t nCols = dfNumColumns(df);
+    if (nRows == 0 || nCols == 0) {
         fprintf(stderr, "dfPlot Error: DataFrame is empty.\n");
         return;
     }
@@ -729,52 +752,52 @@ void dfPlot(const DataFrame* df,
     // Check if xColIndex == (size_t)-1 => use row index as X
     bool useIndexAsX = (xColIndex == (size_t)-1);
 
-    // Validate all Y columns are numeric
+    // Validate Y columns must be numeric
     for (size_t i = 0; i < yCount; i++) {
-        const Series* s = dfGetSeries(df, yColIndices[i]);
-        if (!s) {
+        const Series* sy = dfGetSeries(df, yColIndices[i]);
+        if (!sy) {
             fprintf(stderr, "dfPlot Error: Invalid yCol index %zu.\n", yColIndices[i]);
             return;
         }
-        if (s->type != DF_INT && s->type != DF_DOUBLE) {
-            fprintf(stderr, 
-                    "dfPlot Error: Column '%s' is not numeric (type=%d). Cannot plot.\n", 
-                    s->name, (int)s->type);
+        if (sy->type != DF_INT && sy->type != DF_DOUBLE) {
+            fprintf(stderr,
+                    "dfPlot Error: Column '%s' is not numeric (type=%d). Cannot plot.\n",
+                    sy->name, (int)sy->type);
             return;
         }
     }
 
     // If using a real column as X, check that it's numeric
+    const Series* sx = NULL;
     if (!useIndexAsX) {
-        const Series* sx = dfGetSeries(df, xColIndex);
+        sx = dfGetSeries(df, xColIndex);
         if (!sx) {
             fprintf(stderr, "dfPlot Error: Invalid xCol index %zu.\n", xColIndex);
             return;
         }
         if (sx->type != DF_INT && sx->type != DF_DOUBLE) {
-            fprintf(stderr, 
+            fprintf(stderr,
                     "dfPlot Error: X column '%s' is not numeric. Cannot plot.\n",
                     sx->name);
             return;
         }
     }
 
-    // Generate Python code in memory
-    const char* pyFilename = "temp_plot.py";  // or use a unique name, or let user specify
+    // Create the temporary Python script
+    const char* pyFilename = "temp_plot.py";
     FILE* pyFile = fopen(pyFilename, "w");
     if (!pyFile) {
         fprintf(stderr, "dfPlot Error: Unable to open temp file '%s' for writing.\n", pyFilename);
         return;
     }
 
+    // Basic imports
     fprintf(pyFile, "import matplotlib.pyplot as plt\n");
     fprintf(pyFile, "import sys\n\n");
 
-    size_t nRows = dfNumRows(df);
-
-    // 1) Create the X array in Python
+    // 1) Create X array (either row indices or numeric column)
     if (useIndexAsX) {
-        // Use row indices 0..nRows-1
+        // Use row indices 0..(nRows-1)
         fprintf(pyFile, "x = [");
         for (size_t r = 0; r < nRows; r++) {
             fprintf(pyFile, "%zu", r);
@@ -782,8 +805,6 @@ void dfPlot(const DataFrame* df,
         }
         fprintf(pyFile, "]\n");
     } else {
-        // Use numeric column xColIndex
-        const Series* sx = dfGetSeries(df, xColIndex);
         fprintf(pyFile, "x = [");
         for (size_t r = 0; r < nRows; r++) {
             double val = 0.0;
@@ -794,8 +815,7 @@ void dfPlot(const DataFrame* df,
         fprintf(pyFile, "]\n");
     }
 
-    // 2) Create each Y array
-    //    We'll name them y0, y1, etc., in Python code
+    // 2) Create each Y array: y0, y1, etc.
     for (size_t i = 0; i < yCount; i++) {
         const Series* s = dfGetSeries(df, yColIndices[i]);
         fprintf(pyFile, "y%zu = [", i);
@@ -808,38 +828,77 @@ void dfPlot(const DataFrame* df,
         fprintf(pyFile, "]\n");
     }
 
-    // 3) Plot commands
-    //    For each Y column, do e.g. plt.plot(x, y0, label='colName')
-    //    or plt.scatter(...) if plotType == "scatter".
-    for (size_t i = 0; i < yCount; i++) {
-        const Series* s = dfGetSeries(df, yColIndices[i]);
-        if (strcmp(plotType, "scatter") == 0) {
-            // scatter
+    // 3) Plot logic
+    if (strcmp(plotType, "scatter") == 0) {
+        // scatter plot
+        for (size_t i = 0; i < yCount; i++) {
+            const Series* s = dfGetSeries(df, yColIndices[i]);
             fprintf(pyFile, "plt.scatter(x, y%zu, label=\"%s\")\n", i, s->name);
-        } else {
-            // line plot
+        }
+        fprintf(pyFile, "plt.xlabel(\"%s\")\n",
+                useIndexAsX ? "Index" : sx->name);
+        fprintf(pyFile, "plt.ylabel(\"Value\")\n");
+        fprintf(pyFile, "plt.title(\"DataFrame Scatter Plot\")\n");
+        fprintf(pyFile, "plt.legend()\n");
+
+    } else if (strcmp(plotType, "hloc") == 0) {
+        // HLOC candlestick: we need yCount == 4 => (Open, High, Low, Close)
+        // We'll use "mplfinance" to plot.  (pip install mplfinance)
+        if (yCount != 4) {
+            fprintf(stderr, "dfPlot Error: 'hloc' plotType requires exactly 4 y columns (O,H,L,C)\n");
+            fclose(pyFile);
+            remove(pyFilename);
+            return;
+        }
+        fprintf(pyFile, "import mplfinance as mpf\n");
+        fprintf(pyFile, "import pandas as pd\n\n");
+
+        // Build candleData = [(x[i], open[i], high[i], low[i], close[i]) ...]
+        fprintf(pyFile, "candleData = []\n");
+        fprintf(pyFile, "for i in range(len(x)):\n");
+        fprintf(pyFile, "    candleData.append((x[i], y0[i], y1[i], y2[i], y3[i]))\n\n");
+
+        // Convert that into a pandas DataFrame with columns = ['time','Open','High','Low','Close']
+        fprintf(pyFile, "df_data = pd.DataFrame(candleData, columns=['time','Open','High','Low','Close'])\n");
+
+        // If x is time in milliseconds, for example, you can convert:
+        //   df_data['time'] = pd.to_datetime(df_data['time'], unit='ms')
+        // If it's just a numeric index, we can skip that. 
+        // We'll assume a user might have real time in 'x'. Let's try to parse as ms if you want:
+        fprintf(pyFile, "# If you want to interpret x as timestamps in ms, uncomment:\n");
+        fprintf(pyFile, "# df_data['time'] = pd.to_datetime(df_data['time'], unit='ms')\n");
+
+        fprintf(pyFile, "df_data.set_index('time', inplace=True)\n\n");
+
+        // Now plot
+        fprintf(pyFile, "mpf.plot(df_data, type='candle', style='charles', title='HLOC Candlestick')\n");
+
+    } else {
+        // Default: line plot
+        for (size_t i = 0; i < yCount; i++) {
+            const Series* s = dfGetSeries(df, yColIndices[i]);
             fprintf(pyFile, "plt.plot(x, y%zu, label=\"%s\")\n", i, s->name);
         }
+        fprintf(pyFile, "plt.xlabel(\"%s\")\n",
+                useIndexAsX ? "Index" : sx->name);
+        fprintf(pyFile, "plt.ylabel(\"Value\")\n");
+        fprintf(pyFile, "plt.title(\"DataFrame Line Plot\")\n");
+        fprintf(pyFile, "plt.legend()\n");
     }
 
-    // 4) Title, legend, etc.
-    fprintf(pyFile, "plt.xlabel(\"%s\")\n", 
-            useIndexAsX ? "Index" : dfGetSeries(df, xColIndex)->name);
-    fprintf(pyFile, "plt.ylabel(\"Value\")\n");
-    fprintf(pyFile, "plt.title(\"DataFrame Plot\")\n");
-    fprintf(pyFile, "plt.legend()\n");
-
-    // 5) If outputFile is not NULL, save to file; else show.
+    // 4) Save or Show
     if (outputFile && strlen(outputFile) > 0) {
+        fprintf(pyFile, "import matplotlib.pyplot as plt\n");
         fprintf(pyFile, "plt.savefig(\"%s\")\n", outputFile);
         fprintf(pyFile, "print(\"Plot saved to %s\")\n", outputFile);
     } else {
+        fprintf(pyFile, "import matplotlib.pyplot as plt\n");
         fprintf(pyFile, "plt.show()\n");
     }
 
     fclose(pyFile);
 
-    // 6) Run the Python script
+    // 5) Run the Python script
     char cmd[256];
     snprintf(cmd, sizeof(cmd), "python3 \"%s\"", pyFilename);
     int ret = system(cmd);
@@ -847,7 +906,315 @@ void dfPlot(const DataFrame* df,
         fprintf(stderr, "dfPlot Warning: system(\"%s\") returned %d.\n", cmd, ret);
     }
 
-    // 7) Optionally remove the temporary script
-    //    (comment out if you'd like to keep the script for debugging)
+    // 6) Remove the temp script
     remove(pyFilename);
+}
+
+
+
+/* -------------------------------------------------------------------------
+ * DataFrame CSV Reading
+ * ------------------------------------------------------------------------- */
+/*
+ * Helper to parse a line by comma. Modifies the line in place.
+ * Returns the number of tokens found, storing pointers in 'tokens'.
+ */
+static size_t splitCsvLine(char* line, char** tokens, size_t maxTokens) {
+    size_t count = 0;
+    char* pch = strtok(line, ",");
+    while (pch != NULL && count < maxTokens) {
+        tokens[count++] = pch;
+        pch = strtok(NULL, ",");
+    }
+    return count;
+}
+
+/*
+ * Determine if a string can be parsed entirely as int or double.
+ * Return 0 = int, 1 = double, -1 = neither.
+ */
+static int checkNumericType(const char* str) {
+    if (!str || !*str) return -1;
+    while (isspace((unsigned char)*str)) str++; // skip leading
+    char* endptr;
+    // Try int
+    long v = strtol(str, &endptr, 10);
+    if (*endptr == '\0') {
+        return 0;
+    }
+    // Try double
+    double d = strtod(str, &endptr);
+    if (*endptr == '\0') {
+        return 1;
+    }
+    return -1;
+}
+
+/*
+ * We store all CSV data in memory as strings first.
+ */
+typedef struct {
+    size_t nCols;
+    size_t nRows;
+    char** headers;   // array of string pointers for column names
+    char*** cells;    // 2D array [r][c], each is a string
+} CsvBuffer;
+
+/*
+ * Free function for CsvBuffer
+ */
+static void freeCsvBuffer(CsvBuffer* cb) {
+    if (!cb) return;
+    if (cb->headers) {
+        for (size_t c = 0; c < cb->nCols; c++) {
+            free(cb->headers[c]);
+        }
+        free(cb->headers);
+    }
+    if (cb->cells) {
+        for (size_t r = 0; r < cb->nRows; r++) {
+            for (size_t c = 0; c < cb->nCols; c++) {
+                free(cb->cells[r][c]); // free each cell
+            }
+            free(cb->cells[r]);
+        }
+        free(cb->cells);
+    }
+    memset(cb, 0, sizeof(*cb));
+}
+
+/*
+ * 1) Read the entire CSV into a CsvBuffer (two-pass: here is the first pass).
+ *    - Read the header -> nCols
+ *    - For each data line, if not blank, parse into tokens (filling short lines with "")
+ *    - Store tokens in memory
+ */
+static bool loadCsvIntoBuffer(const char* filename, CsvBuffer* cb) {
+    FILE* fp = fopen(filename, "r");
+    if (!fp) {
+        fprintf(stderr, "loadCsvIntoBuffer: cannot open file '%s'\n", filename);
+        return false;
+    }
+
+    char lineBuf[MAX_LINE_LEN];
+    // Read header
+    if (!fgets(lineBuf, sizeof(lineBuf), fp)) {
+        fprintf(stderr, "loadCsvIntoBuffer: file '%s' is empty.\n", filename);
+        fclose(fp);
+        return false;
+    }
+    // Strip newline
+    lineBuf[strcspn(lineBuf, "\r\n")] = '\0';
+
+    // Parse header
+    char* headerTokens[MAX_COLS];
+    size_t colCount = splitCsvLine(lineBuf, headerTokens, MAX_COLS);
+    if (colCount == 0) {
+        fprintf(stderr, "loadCsvIntoBuffer: file '%s' has an empty header.\n", filename);
+        fclose(fp);
+        return false;
+    }
+
+    cb->nCols = colCount;
+    cb->headers = (char**)calloc(colCount, sizeof(char*));
+    if (!cb->headers) {
+        fclose(fp);
+        fprintf(stderr, "loadCsvIntoBuffer: out of memory for headers.\n");
+        return false;
+    }
+    for (size_t c = 0; c < colCount; c++) {
+        cb->headers[c] = strdup(headerTokens[c]);
+    }
+
+    // We do not know nRows yet, so let's store lines in a temporary array
+    // Then we'll allocate cb->cells once we know the final row count
+    size_t capacityRows = 1000;  // arbitrary
+    size_t rowCount = 0;
+    char*** rowData = (char***)malloc(sizeof(char**) * capacityRows);
+    if (!rowData) {
+        fclose(fp);
+        fprintf(stderr, "loadCsvIntoBuffer: out of memory for row pointers.\n");
+        return false;
+    }
+
+    while (fgets(lineBuf, sizeof(lineBuf), fp)) {
+        // Remove newline
+        lineBuf[strcspn(lineBuf, "\r\n")] = '\0';
+        // Check blank line
+        char* checkp = lineBuf;
+        while (*checkp && isspace((unsigned char)*checkp)) checkp++;
+        if (*checkp == '\0') {
+            // skip empty
+            continue;
+        }
+
+        // Now parse
+        char* tokens[MAX_COLS];
+        size_t nTokens = splitCsvLine(lineBuf, tokens, MAX_COLS);
+        // pad if short
+        if (nTokens < colCount) {
+            for (size_t cc = nTokens; cc < colCount; cc++) {
+                tokens[cc] = "";
+            }
+            nTokens = colCount;
+        }
+
+        // store this row in memory
+        if (rowCount >= capacityRows) {
+            // expand
+            capacityRows *= 2;
+            rowData = (char***)realloc(rowData, sizeof(char**) * capacityRows);
+            if (!rowData) {
+                fclose(fp);
+                fprintf(stderr, "loadCsvIntoBuffer: out of memory expanding rowData.\n");
+                return false;
+            }
+        }
+        rowData[rowCount] = (char**)malloc(sizeof(char*) * colCount);
+        if (!rowData[rowCount]) {
+            fclose(fp);
+            fprintf(stderr, "loadCsvIntoBuffer: out of memory for row.\n");
+            return false;
+        }
+        // copy tokens
+        for (size_t cc = 0; cc < colCount; cc++) {
+            rowData[rowCount][cc] = strdup(tokens[cc]);
+        }
+        rowCount++;
+    }
+    fclose(fp);
+
+    // Now store them in cb
+    cb->nRows = rowCount;
+    cb->cells = (char***)malloc(sizeof(char**) * rowCount);
+    if (!cb->cells) {
+        fprintf(stderr, "loadCsvIntoBuffer: out of memory for cb->cells.\n");
+        free(rowData);
+        return false;
+    }
+    for (size_t r = 0; r < rowCount; r++) {
+        cb->cells[r] = rowData[r];
+    }
+    free(rowData);
+
+    return true;
+}
+
+/*
+ * 2) For each column, decide if it's int, double, or string 
+ *    by scanning *all* row values in that column.
+ */
+static ColumnType inferColumnType(CsvBuffer* cb, size_t colIndex) {
+    // We'll do a quick check:
+    // - if all parse as int => DF_INT
+    // - else if all parse as double => DF_DOUBLE
+    // - else => DF_STRING
+    int colStage = 0; // 0 => still might be int, 1 => might be double, 2 => must be string
+    for (size_t r = 0; r < cb->nRows; r++) {
+        const char* val = cb->cells[r][colIndex];
+        int t = checkNumericType(val);
+        if (t < 0) {
+            // not numeric => must be string
+            colStage = 2;
+            break;
+        } else if (t == 1) {
+            // double
+            if (colStage == 0) {
+                // we saw int so far, now we see double => entire column becomes double
+                colStage = 1;
+            }
+            // if colStage is 1 or 2, stay there
+        }
+        // if t=0 => int, we remain colStage=0 if it was 0
+        // if colStage was 1 => we must keep it at 1
+    }
+    // interpret colStage
+    if (colStage == 0) {
+        return DF_INT;
+    } else if (colStage == 1) {
+        return DF_DOUBLE;
+    }
+    return DF_STRING;
+}
+
+/*
+ * 3) Build the final DataFrame: create Series columns of the chosen type,
+ *    parse each cell accordingly, and add. 
+ */
+bool readCsv(DataFrame* df, const char* filename) {
+    if (!df || !filename) {
+        fprintf(stderr, "readCsv: invalid arguments.\n");
+        return false;
+    }
+
+    CsvBuffer cb;
+    memset(&cb, 0, sizeof(cb));
+
+    // 1) Load entire CSV into memory
+    if (!loadCsvIntoBuffer(filename, &cb)) {
+        freeCsvBuffer(&cb);
+        return false;
+    }
+
+    // Now we have cb.nCols, cb.nRows, cb.headers, and cb.cells[r][c] as strings
+    // 2) If no rows, just create empty string columns
+    if (cb.nRows == 0) {
+        // Means we have columns from header but 0 data rows
+        dfInit(df);
+        for (size_t c = 0; c < cb.nCols; c++) {
+            Series s;
+            seriesInit(&s, cb.headers[c], DF_STRING);
+            // no data, so 0 rows
+            dfAddSeries(df, &s);
+            seriesFree(&s);
+        }
+        freeCsvBuffer(&cb);
+        return true;
+    }
+
+    // 3) Infer each column’s type
+    ColumnType* finalTypes = (ColumnType*)malloc(sizeof(ColumnType) * cb.nCols);
+    if (!finalTypes) {
+        fprintf(stderr, "readCsv: out of memory for finalTypes.\n");
+        freeCsvBuffer(&cb);
+        return false;
+    }
+
+    for (size_t c = 0; c < cb.nCols; c++) {
+        finalTypes[c] = inferColumnType(&cb, c);
+    }
+
+    // 4) Build the DataFrame
+    dfInit(df);
+    for (size_t c = 0; c < cb.nCols; c++) {
+        Series s;
+        seriesInit(&s, cb.headers[c], finalTypes[c]);
+        // parse each row's string and add
+        for (size_t r = 0; r < cb.nRows; r++) {
+            const char* valStr = cb.cells[r][c];
+            switch (finalTypes[c]) {
+                case DF_INT: {
+                    int parsed = (int)strtol(valStr, NULL, 10);
+                    seriesAddInt(&s, parsed);
+                } break;
+                case DF_DOUBLE: {
+                    double d = strtod(valStr, NULL);
+                    seriesAddDouble(&s, d);
+                } break;
+                case DF_STRING: {
+                    seriesAddString(&s, valStr);
+                } break;
+            }
+        }
+        // Now add it to the DataFrame
+        bool ok = dfAddSeries(df, &s);
+        if (!ok) {
+            fprintf(stderr, "readCsv: dfAddSeries failed for column %s.\n", s.name);
+        }
+        seriesFree(&s);
+    }
+
+    free(finalTypes);
+    freeCsvBuffer(&cb);
+    return true;
 }

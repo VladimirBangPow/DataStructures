@@ -355,6 +355,153 @@ static void testDfPlot(void){
     dfFree(&df);
 
 }
+
+static void testReadCsv(void) {
+    // 1) Create a small CSV file with known contents
+    const char* testFilename = "test_dummy.csv";
+    FILE* fp = fopen(testFilename, "w");
+    assert(fp);
+
+    // CSV with 3 columns: ID, Value, Label
+    fprintf(fp, "ID,Value,Label\n");
+    fprintf(fp, "1,3.14,Foo\n");
+    fprintf(fp, "2,100,Bar\n");
+    fprintf(fp, "X,Hello,Baz\n"); // row with non-numeric in ID => fallback to string
+    fclose(fp);
+
+    // 2) Read into a DataFrame
+    DataFrame df;
+    dfInit(&df);  // or we can pass an uninitialized df
+    bool ok = readCsv(&df, testFilename);
+    assert(ok);
+
+    // 3) Check shape
+    assert(dfNumColumns(&df) == 3);
+    assert(dfNumRows(&df) == 3); // "X,Hello,Baz" is the 3rd data row
+
+    // 4) Validate each column’s type
+    //    - ID: first row had int, second row had int, third row had "X" => fallback to string
+    //    So final type is DF_STRING for ID
+    const Series* sID = dfGetSeries(&df, 0);
+    assert(sID);
+    assert(sID->type == DF_STRING);
+
+    //    - Value: first row was 3.14 => double, second row was 100 => still parseable as double, third row was "Hello" => fallback to string
+    //    So final type is DF_STRING for Value as well
+    const Series* sValue = dfGetSeries(&df, 1);
+    assert(sValue);
+    assert(sValue->type == DF_STRING);
+
+    //    - Label: always strings => DF_STRING
+    const Series* sLabel = dfGetSeries(&df, 2);
+    assert(sLabel);
+    assert(sLabel->type == DF_STRING);
+
+    // 5) Validate data
+    // Row 0: ID="1", Value="3.14", Label="Foo"
+    {
+        char* tmp = NULL;
+        bool ok = seriesGetString(sID, 0, &tmp); 
+        assert(ok && strcmp(tmp,"1")==0);
+        free(tmp);
+
+        ok = seriesGetString(sValue, 0, &tmp);
+        assert(ok && strcmp(tmp,"3.14")==0);
+        free(tmp);
+
+        ok = seriesGetString(sLabel, 0, &tmp);
+        assert(ok && strcmp(tmp,"Foo")==0);
+        free(tmp);
+    }
+
+    // Row 1: ID="2", Value="100", Label="Bar"
+    {
+        char* tmp = NULL;
+        bool ok = seriesGetString(sID, 1, &tmp); 
+        assert(ok && strcmp(tmp,"2")==0);
+        free(tmp);
+
+        ok = seriesGetString(sValue, 1, &tmp);
+        assert(ok && strcmp(tmp,"100")==0);
+        free(tmp);
+
+        ok = seriesGetString(sLabel, 1, &tmp);
+        assert(ok && strcmp(tmp,"Bar")==0);
+        free(tmp);
+    }
+
+    // Row 2: ID="X", Value="Hello", Label="Baz"
+    {
+        char* tmp = NULL;
+        bool ok = seriesGetString(sID, 2, &tmp); 
+        assert(ok && strcmp(tmp,"X")==0);
+        free(tmp);
+
+        ok = seriesGetString(sValue, 2, &tmp);
+        assert(ok && strcmp(tmp,"Hello")==0);
+        free(tmp);
+
+        ok = seriesGetString(sLabel, 2, &tmp);
+        assert(ok && strcmp(tmp,"Baz")==0);
+        free(tmp);
+    }
+
+    dfFree(&df);
+
+    printf("testReadCsv() passed.\n");
+}
+
+void testHLOC(void) {
+    DataFrame df;
+    dfInit(&df);
+
+    // 1) Read the CSV
+    const char* filename = "./DataFrame/btcusd.csv";
+    bool ok = readCsv(&df, filename);
+    if (!ok) {
+        printf("testHLOC: Could not read %s\n", filename);
+        return;
+    }
+
+    // 2) Check how many columns we got
+    size_t nCols = dfNumColumns(&df);
+    printf("testHLOC: Loaded %zu columns, %zu rows from %s\n", nCols, dfNumRows(&df), filename);
+
+    // Let's identify or assume:
+    //   Column 0 => time
+    //   Column 1 => open
+    //   Column 2 => close
+    //   Column 3 => high
+    //   Column 4 => low
+    //   Column 5 => volume
+    // For a candlestick, we need O,H,L,C => yColIndices = {1,3,4,2}
+    // We'll use time as X => xColIndex=0
+
+    if (nCols < 5) {
+        printf("testHLOC: Not enough columns to do O,H,L,C.\n");
+        dfFree(&df);
+        return;
+    }
+
+    // yColIndices {open, high, low, close} in the CSV order:
+    size_t yCols[4] = {1, 3, 4, 2}; 
+    // (Open=1, High=3, Low=4, Close=2)
+
+    // 3) Plot
+    // We'll save to a PNG file called "btcusd_candle.png"
+    dfPlot(&df, 
+           0 /* xColIndex => time */, 
+           yCols, 
+           4 /* yCount */, 
+           "hloc", 
+           "btcusd_candle.png");
+
+    // 4) Clean up
+    dfFree(&df);
+
+    printf("testHLOC: Completed. Check btcusd_candle.png for the candlestick chart.\n");
+}
+
 /*
  * testDataFrame: driver function that calls all sub-tests.
  * This is the function you would call from a main() or from another test harness.
@@ -366,5 +513,7 @@ void testDataFrame(void) {
     testHeadTailDescribe();
     stressTestDataFrame();
     testDfPlot();
+    testReadCsv();
+    testHLOC();
     printf("All DataFrame tests passed successfully!\n");
 }
