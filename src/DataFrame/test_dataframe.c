@@ -17,92 +17,7 @@ static int safeStrcmp(const char* a, const char* b) {
     return strcmp(a, b);
 }
 
-/*
- * Test basic Series operations:
- *   1) Initialize a Series
- *   2) Add some elements
- *   3) Retrieve and validate them
- *   4) Free the Series
- */
-static void testSeriesFunctions(void) {
-    {
-        // Test an integer Series
-        Series intSeries;
-        seriesInit(&intSeries, "IntSeries", DF_INT);
 
-        // Add ints
-        for (int i = 0; i < 5; i++) {
-            seriesAddInt(&intSeries, i * 10);
-        }
-
-        // Check size
-        assert(seriesSize(&intSeries) == 5);
-
-        // Validate data
-        for (size_t i = 0; i < 5; i++) {
-            int val;
-            bool ok = seriesGetInt(&intSeries, i, &val);
-            assert(ok);
-            assert(val == (int)i * 10);
-        }
-        seriesPrint(&intSeries);
-        // Clean up
-        seriesFree(&intSeries);
-    }
-    {
-        // Test a double Series
-        Series dblSeries;
-        seriesInit(&dblSeries, "DblSeries", DF_DOUBLE);
-
-        // Add doubles
-        for (int i = 0; i < 5; i++) {
-            seriesAddDouble(&dblSeries, i * 1.5);
-        }
-
-        // Check size
-        assert(seriesSize(&dblSeries) == 5);
-
-        // Validate data
-        for (size_t i = 0; i < 5; i++) {
-            double val;
-            bool ok = seriesGetDouble(&dblSeries, i, &val);
-            assert(ok);
-            assert(val == (double)i * 1.5);
-        }
-        seriesPrint(&dblSeries);
-
-        // Clean up
-        seriesFree(&dblSeries);
-    }
-    {
-        // Test a string Series
-        Series strSeries;
-        seriesInit(&strSeries, "StrSeries", DF_STRING);
-
-        // Add strings
-        seriesAddString(&strSeries, "Alpha");
-        seriesAddString(&strSeries, "Bravo");
-        seriesAddString(&strSeries, "Charles");
-
-        // Check size
-        assert(seriesSize(&strSeries) == 3);
-
-        // Validate data
-        const char* expected[] = {"Alpha", "Bravo", "Charles"};
-        for (size_t i = 0; i < 3; i++) {
-            char* got = NULL;
-            bool ok = seriesGetString(&strSeries, i, &got);
-            assert(ok);
-            assert(safeStrcmp(got, expected[i]) == 0);
-            free(got);
-        }
-        seriesPrint(&strSeries);
-
-        // Clean up
-        seriesFree(&strSeries);
-    }
-    printf("testSeriesFunctions() passed.\n");
-}
 
 /*
  * Test DataFrame operations on smaller scale:
@@ -467,15 +382,6 @@ void testHLOC(void) {
     size_t nCols = dfNumColumns(&df);
     printf("testHLOC: Loaded %zu columns, %zu rows from %s\n", nCols, dfNumRows(&df), filename);
 
-    // Let's identify or assume:
-    //   Column 0 => time
-    //   Column 1 => open
-    //   Column 2 => close
-    //   Column 3 => high
-    //   Column 4 => low
-    //   Column 5 => volume
-    // For a candlestick, we need O,H,L,C => yColIndices = {1,3,4,2}
-    // We'll use time as X => xColIndex=0
 
     if (nCols < 5) {
         printf("testHLOC: Not enough columns to do O,H,L,C.\n");
@@ -518,12 +424,11 @@ void testHLOC(void) {
  */
 void testDataFrame(void) {
     printf("Running DataFrame tests...\n");
-    // testSeriesFunctions();
-    // testDataFrameOperations();
-    // testHeadTailDescribe();
-    // stressTestDataFrame();
-    // testDfPlot();
-    // testReadCsv();
+    testDataFrameOperations();
+    testHeadTailDescribe();
+    stressTestDataFrame();
+    testDfPlot();
+    testReadCsv();
     testHLOC();
     printf("All DataFrame tests passed successfully!\n");
 }

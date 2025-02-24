@@ -4,24 +4,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "../DynamicArray/dynamic_array.h"
-
+#include "../Series/series.h"
 /* -------------------------------------------------------------------------
  * Enums, Structs, and Type Definitions
  * ------------------------------------------------------------------------- */
-
-// Basic type enumeration for Series columns.
-typedef enum {
-    DF_INT,
-    DF_DOUBLE,
-    DF_STRING
-} ColumnType;
-
-// A Series represents a single column: a name, a type, and a DynamicArray for data.
-typedef struct {
-    char*        name;
-    ColumnType   type;
-    DynamicArray data;     // Each element in 'data' is a copy of the item (int/double/char array).
-} Series;
 
 // A DataFrame holds an array of Series (columns) plus a row count.
 typedef struct {
@@ -29,41 +15,6 @@ typedef struct {
     size_t       nrows;    // Number of rows (all series must be the same length)
 } DataFrame;
 
-/* -------------------------------------------------------------------------
- * Series Functions
- * ------------------------------------------------------------------------- */
-
-// Initialize a Series with a name and type.
-void seriesInit(Series* s, const char* name, ColumnType type);
-
-// Free internal memory in a Series.
-void seriesFree(Series* s);
-
-// Get the size (number of elements) of the Series.
-size_t seriesSize(const Series* s);
-
-// Add integer data to the Series. (Only valid if s->type == DF_INT)
-void seriesAddInt(Series* s, int value);
-
-// Add double data to the Series. (Only valid if s->type == DF_DOUBLE)
-void seriesAddDouble(Series* s, double value);
-
-// Add string data to the Series. (Only valid if s->type == DF_STRING)
-// Internally copies the string.
-void seriesAddString(Series* s, const char* str);
-
-// Retrieve an integer from a Series at a given row index.
-bool seriesGetInt(const Series* s, size_t index, int* outValue);
-
-// Retrieve a double from a Series at a given row index.
-bool seriesGetDouble(const Series* s, size_t index, double* outValue);
-
-// Retrieve a string from a Series at a given row index (copies into outStr).
-// Caller is responsible for freeing *outStr if successful.
-bool seriesGetString(const Series* s, size_t index, char** outStr);
-
-// Utility print for the entire Series (for demonstration).
-void seriesPrint(const Series* s);
 
 /* -------------------------------------------------------------------------
  * DataFrame Functions

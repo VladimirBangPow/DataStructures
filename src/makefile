@@ -29,6 +29,7 @@ all:
 	    SegmentTree/segtree.c SegmentTree/test_segtree.c \
 		Graph/graph.c Graph/test_graph.c Graph/graph_algorithms.c \
 		DataFrame/dataframe.c DataFrame/test_dataframe.c \
+		Series/series.c Series/test_series.c \
 	    -o main \
 	    -lm
 
@@ -60,6 +61,7 @@ asan:
 	    SegmentTree/segtree.c SegmentTree/test_segtree.c \
 		Graph/graph.c Graph/test_graph.c Graph/graph_algorithms.c \
 		DataFrame/dataframe.c DataFrame/test_dataframe.c \
+		Series/series.c Series/test_series.c \
 	    -o main_asan \
 	    -lm
 

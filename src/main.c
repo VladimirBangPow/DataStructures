@@ -22,6 +22,7 @@
 #include "SegmentTree/test_segtree.h"
 #include "Graph/test_graph.h"
 #include "DataFrame/test_dataframe.h"
+#include "Series/test_series.h"
 
 int main(void) {
     // testLinkedList();
@@ -47,6 +48,7 @@ int main(void) {
     // testTrie();
     // testSegTree();
     // testGraph();
+    testSeries();
     testDataFrame();
     return 0;
 }

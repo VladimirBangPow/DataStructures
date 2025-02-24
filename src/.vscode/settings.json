@@ -21,6 +21,9 @@
         "vector": "cpp",
         "initializer_list": "cpp",
         "ios": "cpp",
-        "segtree.h": "c"
+        "segtree.h": "c",
+        "dataframe.h": "c",
+        "test_dataframe.h": "c",
+        "test_series.h": "c"
     }
 }
