@@ -27,7 +27,7 @@ all:
 	    Trie/trie.c Trie/test_trie.c \
 	    Tools/Unicode/unicode.c Tools/Unicode/test_unicode.c \
 	    SegmentTree/segtree.c SegmentTree/test_segtree.c \
-		Graph/graph.c Graph/test_graph.c Graph/graph_algorithms.c \
+		Graph/graph.c Graph/test_graph.c Graph/adj_list.c Graph/adj_matrix.c \
 		DataFrame/dataframe.c DataFrame/test_dataframe.c \
 		Series/series.c Series/test_series.c \
 	    -o main \
@@ -59,7 +59,7 @@ asan:
 	    Trie/trie.c Trie/test_trie.c \
 	    Tools/Unicode/unicode.c Tools/Unicode/test_unicode.c \
 	    SegmentTree/segtree.c SegmentTree/test_segtree.c \
-		Graph/graph.c Graph/test_graph.c Graph/graph_algorithms.c \
+		Graph/graph.c Graph/test_graph.c Graph/adj_list.c Graph/adj_matrix.c \
 		DataFrame/dataframe.c DataFrame/test_dataframe.c \
 		Series/series.c Series/test_series.c \
 	    -o main_asan \

@@ -47,8 +47,8 @@ int main(void) {
     // testUnicode();
     // testTrie();
     // testSegTree();
-    // testGraph();
-    testSeries();
-    testDataFrame();
+    testGraph();
+    // testSeries();
+    // testDataFrame();
     return 0;
 }

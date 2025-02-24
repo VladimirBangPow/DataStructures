@@ -4,10 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-/* 
- * Enum or flags for graph properties.
- * You can alternatively store booleans (isDirected, isWeighted).
- */
+/* Graph type: is it directed or undirected, weighted or unweighted? */
 typedef enum {
     GRAPH_UNDIRECTED_UNWEIGHTED,
     GRAPH_DIRECTED_UNWEIGHTED,
@@ -15,68 +12,62 @@ typedef enum {
     GRAPH_DIRECTED_WEIGHTED
 } GraphType;
 
-/*
- * A structure to represent an adjacency list node (edge).
- * 'weight' is meaningful only for weighted graphs. For an unweighted graph,
- * you can ignore or set this to a default value (like 1.0 or 0.0).
- */
-typedef struct Edge {
-    int destIndex;         /* Index in the graph->vertices array this edge goes to */
-    double weight;         /* Edge weight if graph is weighted; else 1.0 or unused */
-    struct Edge* next;     /* Pointer to the next edge in the adjacency list */
-} Edge;
+/* Implementation storage choice: adjacency list or adjacency matrix */
+typedef enum {
+    GRAPH_STORAGE_LIST,
+    GRAPH_STORAGE_MATRIX
+} GraphStorage;
 
-/*
- * A structure to store each vertex in the graph.
- * 'data' is a generic pointer to user-supplied vertex data.
- * 'edges' is the adjacency list head for this vertex.
- */
-typedef struct Vertex {
-    void* data;
-    Edge* edges;
-} Vertex;
 
-/*
- * Graph structure.
- * - 'type' indicates directed/undirected/weighted/unweighted.
- * - 'capacity' is how many vertices we can hold (initially allocated).
- * - 'size' is the current number of vertices.
- * - 'vertices' is a dynamic array of Vertex.
- * - 'compare' is used to compare vertex data (return 0 if equal, <0 or >0 otherwise).
- * - 'freeData' is used to free the vertex data if needed (user-supplied).
+/* We will declare a struct GraphOps with function pointers, 
+ * then we define adjacency-list ops in adj_list.c, adjacency-matrix ops in adj_matrix.c.
  */
+typedef struct GraphOps {
+    bool (*addVertex)(void* impl, void* data);
+    bool (*removeVertex)(void* impl, const void* data);
+    bool (*addEdge)(void* impl, const void* srcData, const void* dstData, double weight);
+    bool (*removeEdge)(void* impl, const void* srcData, const void* dstData);
+    int  (*getNumVertices)(const void* impl);
+    int  (*getNumEdges)(const void* impl);
+    bool (*hasEdge)(const void* impl, const void* srcData, const void* dstData, double* outWeight);
+    void (*print)(const void* impl, void (*printData)(const void*));
+    void (*destroy)(void* impl);
+} GraphOps;
+
+/* Our public Graph struct definition (hidden from user) */
 typedef struct Graph {
-    GraphType type;
-    int capacity;
-    int size;
-    Vertex* vertices;
-
+    GraphType     type;
+    GraphStorage  storage;
     int  (*compare)(const void*, const void*);
     void (*freeData)(void*);
-} Graph;
 
-/* Function prototypes */
-Graph* createGraph(GraphType type, 
-                   int initialCapacity,
-                   int (*compareFunc)(const void*, const void*),
-                   void (*freeFunc)(void*));
+    const GraphOps* ops;   /* function pointer table */
+    void*           impl;  /* actual adjacency-list or matrix structure */
+}Graph;
 
-void destroyGraph(Graph* graph);
 
-/* Vertex operations */
-bool addVertex(Graph* graph, void* data);
+
+/* Create a graph. 
+ * storageMode: GRAPH_STORAGE_LIST or GRAPH_STORAGE_MATRIX
+ */
+Graph* createGraphImplementation(GraphType     type,
+                                 GraphStorage  storageMode,
+                                 int           initialCapacity,
+                                 int  (*compareFunc)(const void*, const void*),
+                                 void (*freeFunc)(void*));
+
+/* Public graph operations (delegated internally) */
+bool addVertex   (Graph* graph, void* data);
 bool removeVertex(Graph* graph, const void* data);
-
-/* Edge operations */
-bool addEdge(Graph* graph, const void* sourceData, const void* destData, double weight);
-bool removeEdge(Graph* graph, const void* sourceData, const void* destData);
-
-/* Utility & Query */
+bool addEdge     (Graph* graph, const void* srcData, const void* dstData, double weight);
+bool removeEdge  (Graph* graph, const void* srcData, const void* dstData);
 int  getNumVertices(const Graph* graph);
-int  getNumEdges(const Graph* graph);
-bool hasEdge(const Graph* graph, const void* sourceData, const void* destData, double* outWeight);
+int  getNumEdges   (const Graph* graph);
+bool hasEdge        (const Graph* graph, const void* srcData, const void* dstData, double* outWeight);
+void printGraph     (const Graph* graph, void (*printData)(const void*));
+void destroyGraph   (Graph* graph);
 
-/* Debug printing (optional) */
-void printGraph(const Graph* graph, void (*printData)(const void*));
+/* Possibly BFS/DFS, etc. 
+ * Or we provide an interface to iterate neighbors, so BFS is done externally. */
 
 #endif /* GRAPH_H */

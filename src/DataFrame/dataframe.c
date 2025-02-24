@@ -155,6 +155,148 @@ bool dfAddRow(DataFrame* df, const void** rowData) {
     return true;
 }
 
+
+/* -------------------------------------------------------------------------
+ * DataFrame Query Functions
+ * ------------------------------------------------------------------------- */
+void dfHead(const DataFrame* df, size_t n) {
+    if (!df) return;
+    printf("==== dfHead(%zu) ====\n", n);
+    size_t numRows = dfNumRows(df);
+    size_t limit = (n < numRows) ? n : numRows;
+
+    printf("(Showing first %zu of %zu rows)\n", limit, numRows);
+    for (size_t r = 0; r < limit; r++) {
+        printf("Row %zu: ", r);
+        size_t nCols = dfNumColumns(df);
+        for (size_t c = 0; c < nCols; c++) {
+            const Series* s = dfGetSeries(df, c);
+            if (!s) continue;
+            switch (s->type) {
+                case DF_INT: {
+                    int val;
+                    seriesGetInt(s, r, &val);
+                    printf("%s=%d ", s->name, val);
+                } break;
+                case DF_DOUBLE: {
+                    double val;
+                    seriesGetDouble(s, r, &val);
+                    printf("%s=%.3f ", s->name, val);
+                } break;
+                case DF_STRING: {
+                    char* str = NULL;
+                    if (seriesGetString(s, r, &str)) {
+                        printf("%s=\"%s\" ", s->name, str);
+                        free(str);
+                    }
+                } break;
+            }
+        }
+        printf("\n");
+    }
+}
+
+void dfTail(const DataFrame* df, size_t n) {
+    if (!df) return;
+    printf("==== dfTail(%zu) ====\n", n);
+    size_t numRows = dfNumRows(df);
+    if (n > numRows) n = numRows;
+    size_t start = (numRows > n) ? (numRows - n) : 0;
+
+    printf("(Showing last %zu of %zu rows)\n", n, numRows);
+    for (size_t r = start; r < numRows; r++) {
+        printf("Row %zu: ", r);
+        size_t nCols = dfNumColumns(df);
+        for (size_t c = 0; c < nCols; c++) {
+            const Series* s = dfGetSeries(df, c);
+            if (!s) continue;
+            switch (s->type) {
+                case DF_INT: {
+                    int val;
+                    seriesGetInt(s, r, &val);
+                    printf("%s=%d ", s->name, val);
+                } break;
+                case DF_DOUBLE: {
+                    double val;
+                    seriesGetDouble(s, r, &val);
+                    printf("%s=%.3f ", s->name, val);
+                } break;
+                case DF_STRING: {
+                    char* str = NULL;
+                    if (seriesGetString(s, r, &str)) {
+                        printf("%s=\"%s\" ", s->name, str);
+                        free(str);
+                    }
+                } break;
+            }
+        }
+        printf("\n");
+    }
+}
+
+void dfDescribe(const DataFrame* df) {
+    if (!df) return;
+    printf("==== dfDescribe() ====\n");
+
+    size_t nCols = dfNumColumns(df);
+    size_t nRows = dfNumRows(df);
+
+    // For each numeric column, compute min, max, sum, etc.
+    for (size_t c = 0; c < nCols; c++) {
+        const Series* s = dfGetSeries(df, c);
+        if (!s) continue;
+
+        if (s->type == DF_INT) {
+            // Gather stats for integer column
+            if (nRows == 0) {
+                printf("Column '%s': no data.\n", s->name);
+                continue;
+            }
+            int minVal, maxVal, tmp;
+            double sumVal = 0.0;
+            seriesGetInt(s, 0, &minVal);
+            maxVal = minVal;
+            sumVal = minVal;
+
+            for (size_t r = 1; r < nRows; r++) {
+                seriesGetInt(s, r, &tmp);
+                if (tmp < minVal) minVal = tmp;
+                if (tmp > maxVal) maxVal = tmp;
+                sumVal += tmp;
+            }
+            double meanVal = sumVal / nRows;
+            printf("Column '%s' (int): count=%zu, min=%d, max=%d, mean=%.3f\n",
+                   s->name, nRows, minVal, maxVal, meanVal);
+        }
+        else if (s->type == DF_DOUBLE) {
+            // Gather stats for double column
+            if (nRows == 0) {
+                printf("Column '%s': no data.\n", s->name);
+                continue;
+            }
+            double minVal, maxVal, tmp;
+            double sumVal = 0.0;
+            seriesGetDouble(s, 0, &minVal);
+            maxVal = minVal;
+            sumVal = minVal;
+
+            for (size_t r = 1; r < nRows; r++) {
+                seriesGetDouble(s, r, &tmp);
+                if (tmp < minVal) minVal = tmp;
+                if (tmp > maxVal) maxVal = tmp;
+                sumVal += tmp;
+            }
+            double meanVal = sumVal / nRows;
+            printf("Column '%s' (double): count=%zu, min=%f, max=%f, mean=%.3f\n",
+                   s->name, nRows, minVal, maxVal, meanVal);
+        }
+        else if (s->type == DF_STRING) {
+            // For string columns, we'll just print count.
+            printf("Column '%s' (string): count=%zu\n", s->name, nRows);
+        }
+    }
+}
+
 /* -------------------------------------------------------------------------
  * DataFrame Printing Functions
  * ------------------------------------------------------------------------- */
@@ -396,386 +538,6 @@ void dfPrint(const DataFrame* df) {
     free(colWidths);
     printf("\n[%zu rows x %zu columns]\n", nRows, nCols);
 }
-
-/* -------------------------------------------------------------------------
- * DataFrame Query Functions
- * ------------------------------------------------------------------------- */
-void dfHead(const DataFrame* df, size_t n) {
-    if (!df) return;
-    printf("==== dfHead(%zu) ====\n", n);
-    size_t numRows = dfNumRows(df);
-    size_t limit = (n < numRows) ? n : numRows;
-
-    printf("(Showing first %zu of %zu rows)\n", limit, numRows);
-    for (size_t r = 0; r < limit; r++) {
-        printf("Row %zu: ", r);
-        size_t nCols = dfNumColumns(df);
-        for (size_t c = 0; c < nCols; c++) {
-            const Series* s = dfGetSeries(df, c);
-            if (!s) continue;
-            switch (s->type) {
-                case DF_INT: {
-                    int val;
-                    seriesGetInt(s, r, &val);
-                    printf("%s=%d ", s->name, val);
-                } break;
-                case DF_DOUBLE: {
-                    double val;
-                    seriesGetDouble(s, r, &val);
-                    printf("%s=%.3f ", s->name, val);
-                } break;
-                case DF_STRING: {
-                    char* str = NULL;
-                    if (seriesGetString(s, r, &str)) {
-                        printf("%s=\"%s\" ", s->name, str);
-                        free(str);
-                    }
-                } break;
-            }
-        }
-        printf("\n");
-    }
-}
-
-void dfTail(const DataFrame* df, size_t n) {
-    if (!df) return;
-    printf("==== dfTail(%zu) ====\n", n);
-    size_t numRows = dfNumRows(df);
-    if (n > numRows) n = numRows;
-    size_t start = (numRows > n) ? (numRows - n) : 0;
-
-    printf("(Showing last %zu of %zu rows)\n", n, numRows);
-    for (size_t r = start; r < numRows; r++) {
-        printf("Row %zu: ", r);
-        size_t nCols = dfNumColumns(df);
-        for (size_t c = 0; c < nCols; c++) {
-            const Series* s = dfGetSeries(df, c);
-            if (!s) continue;
-            switch (s->type) {
-                case DF_INT: {
-                    int val;
-                    seriesGetInt(s, r, &val);
-                    printf("%s=%d ", s->name, val);
-                } break;
-                case DF_DOUBLE: {
-                    double val;
-                    seriesGetDouble(s, r, &val);
-                    printf("%s=%.3f ", s->name, val);
-                } break;
-                case DF_STRING: {
-                    char* str = NULL;
-                    if (seriesGetString(s, r, &str)) {
-                        printf("%s=\"%s\" ", s->name, str);
-                        free(str);
-                    }
-                } break;
-            }
-        }
-        printf("\n");
-    }
-}
-
-void dfDescribe(const DataFrame* df) {
-    if (!df) return;
-    printf("==== dfDescribe() ====\n");
-
-    size_t nCols = dfNumColumns(df);
-    size_t nRows = dfNumRows(df);
-
-    // For each numeric column, compute min, max, sum, etc.
-    for (size_t c = 0; c < nCols; c++) {
-        const Series* s = dfGetSeries(df, c);
-        if (!s) continue;
-
-        if (s->type == DF_INT) {
-            // Gather stats for integer column
-            if (nRows == 0) {
-                printf("Column '%s': no data.\n", s->name);
-                continue;
-            }
-            int minVal, maxVal, tmp;
-            double sumVal = 0.0;
-            seriesGetInt(s, 0, &minVal);
-            maxVal = minVal;
-            sumVal = minVal;
-
-            for (size_t r = 1; r < nRows; r++) {
-                seriesGetInt(s, r, &tmp);
-                if (tmp < minVal) minVal = tmp;
-                if (tmp > maxVal) maxVal = tmp;
-                sumVal += tmp;
-            }
-            double meanVal = sumVal / nRows;
-            printf("Column '%s' (int): count=%zu, min=%d, max=%d, mean=%.3f\n",
-                   s->name, nRows, minVal, maxVal, meanVal);
-        }
-        else if (s->type == DF_DOUBLE) {
-            // Gather stats for double column
-            if (nRows == 0) {
-                printf("Column '%s': no data.\n", s->name);
-                continue;
-            }
-            double minVal, maxVal, tmp;
-            double sumVal = 0.0;
-            seriesGetDouble(s, 0, &minVal);
-            maxVal = minVal;
-            sumVal = minVal;
-
-            for (size_t r = 1; r < nRows; r++) {
-                seriesGetDouble(s, r, &tmp);
-                if (tmp < minVal) minVal = tmp;
-                if (tmp > maxVal) maxVal = tmp;
-                sumVal += tmp;
-            }
-            double meanVal = sumVal / nRows;
-            printf("Column '%s' (double): count=%zu, min=%f, max=%f, mean=%.3f\n",
-                   s->name, nRows, minVal, maxVal, meanVal);
-        }
-        else if (s->type == DF_STRING) {
-            // For string columns, we'll just print count.
-            printf("Column '%s' (string): count=%zu\n", s->name, nRows);
-        }
-    }
-}
-
-
-/* -------------------------------------------------------------------------
- * DataFrame Plotting Functions
- * ------------------------------------------------------------------------- */
-
- // Forward declarations of internal helper to read numeric data
-static bool getNumericValue(const Series* s, size_t index, double* outVal);
-
-/**
- * A small utility: attempt to retrieve numeric data (int or double)
- * from a Series at a given row. Return as a double.
- */
-/**
- * Helper: getNumericValue
- * Attempt to retrieve a numeric value (int or double) from a Series row, 
- * store it in *outVal as a double. Returns false if out of range or not numeric.
- */
-static bool getNumericValue(const Series* s, size_t index, double* outVal) {
-    if (!s || !outVal) return false;
-    if (index >= seriesSize(s)) return false;
-
-    if (s->type == DF_INT) {
-        int temp;
-        if (!seriesGetInt(s, index, &temp)) return false;
-        *outVal = (double)temp;
-        return true;
-    }
-    else if (s->type == DF_DOUBLE) {
-        double temp;
-        if (!seriesGetDouble(s, index, &temp)) return false;
-        *outVal = temp;
-        return true;
-    }
-    // Not a numeric column
-    return false;
-}
-
-/**
- * dfPlot:
- * Generates a temporary Python script that uses matplotlib (and optionally mplfinance)
- * to plot DataFrame columns. Supports:
- *  - "line" (default)
- *  - "scatter"
- *  - "hloc" (candlestick), requires exactly 4 y columns: open, high, low, close
- *
- * xColIndex = -1 uses the row index as X.
- * Otherwise we expect xColIndex to be numeric (int/double).
- * All yColumns must be numeric (int/double).
- *
- * If outputFile is non-empty, we call plt.savefig(...), else plt.show() for an interactive window.
- */
-void dfPlot(const DataFrame* df,
-            size_t xColIndex,
-            const size_t* yColIndices,
-            size_t yCount,
-            const char* plotType,
-            const char* outputFile)
-{
-    if (!df) {
-        fprintf(stderr, "dfPlot Error: DataFrame is NULL.\n");
-        return;
-    }
-    size_t nRows = dfNumRows(df);
-    size_t nCols = dfNumColumns(df);
-    if (nRows == 0 || nCols == 0) {
-        fprintf(stderr, "dfPlot Error: DataFrame is empty.\n");
-        return;
-    }
-    if (!yColIndices || yCount == 0) {
-        fprintf(stderr, "dfPlot Error: Must provide at least one y column.\n");
-        return;
-    }
-    if (!plotType) {
-        plotType = "line"; // default
-    }
-
-    // Check if xColIndex == (size_t)-1 => use row index as X
-    bool useIndexAsX = (xColIndex == (size_t)-1);
-
-    // Validate Y columns must be numeric
-    for (size_t i = 0; i < yCount; i++) {
-        const Series* sy = dfGetSeries(df, yColIndices[i]);
-        if (!sy) {
-            fprintf(stderr, "dfPlot Error: Invalid yCol index %zu.\n", yColIndices[i]);
-            return;
-        }
-        if (sy->type != DF_INT && sy->type != DF_DOUBLE) {
-            fprintf(stderr,
-                    "dfPlot Error: Column '%s' is not numeric (type=%d). Cannot plot.\n",
-                    sy->name, (int)sy->type);
-            return;
-        }
-    }
-
-    // If using a real column as X, check that it's numeric
-    const Series* sx = NULL;
-    if (!useIndexAsX) {
-        sx = dfGetSeries(df, xColIndex);
-        if (!sx) {
-            fprintf(stderr, "dfPlot Error: Invalid xCol index %zu.\n", xColIndex);
-            return;
-        }
-        if (sx->type != DF_INT && sx->type != DF_DOUBLE) {
-            fprintf(stderr,
-                    "dfPlot Error: X column '%s' is not numeric. Cannot plot.\n",
-                    sx->name);
-            return;
-        }
-    }
-
-    // Create the temporary Python script
-    const char* pyFilename = "temp_plot.py";
-    FILE* pyFile = fopen(pyFilename, "w");
-    if (!pyFile) {
-        fprintf(stderr, "dfPlot Error: Unable to open temp file '%s' for writing.\n", pyFilename);
-        return;
-    }
-
-    // Basic imports
-    fprintf(pyFile, "import matplotlib.pyplot as plt\n");
-    fprintf(pyFile, "import sys\n\n");
-
-    // 1) Create X array (either row indices or numeric column)
-    if (useIndexAsX) {
-        // Use row indices 0..(nRows-1)
-        fprintf(pyFile, "x = [");
-        for (size_t r = 0; r < nRows; r++) {
-            fprintf(pyFile, "%zu", r);
-            if (r < nRows - 1) fprintf(pyFile, ", ");
-        }
-        fprintf(pyFile, "]\n");
-    } else {
-        fprintf(pyFile, "x = [");
-        for (size_t r = 0; r < nRows; r++) {
-            double val = 0.0;
-            getNumericValue(sx, r, &val);
-            fprintf(pyFile, "%g", val);
-            if (r < nRows - 1) fprintf(pyFile, ", ");
-        }
-        fprintf(pyFile, "]\n");
-    }
-
-    // 2) Create each Y array: y0, y1, etc.
-    for (size_t i = 0; i < yCount; i++) {
-        const Series* s = dfGetSeries(df, yColIndices[i]);
-        fprintf(pyFile, "y%zu = [", i);
-        for (size_t r = 0; r < nRows; r++) {
-            double val = 0.0;
-            getNumericValue(s, r, &val);
-            fprintf(pyFile, "%g", val);
-            if (r < nRows - 1) fprintf(pyFile, ", ");
-        }
-        fprintf(pyFile, "]\n");
-    }
-
-    // 3) Plot logic
-    if (strcmp(plotType, "scatter") == 0) {
-        // scatter plot
-        for (size_t i = 0; i < yCount; i++) {
-            const Series* s = dfGetSeries(df, yColIndices[i]);
-            fprintf(pyFile, "plt.scatter(x, y%zu, label=\"%s\")\n", i, s->name);
-        }
-        fprintf(pyFile, "plt.xlabel(\"%s\")\n",
-                useIndexAsX ? "Index" : sx->name);
-        fprintf(pyFile, "plt.ylabel(\"Value\")\n");
-        fprintf(pyFile, "plt.title(\"DataFrame Scatter Plot\")\n");
-        fprintf(pyFile, "plt.legend()\n");
-
-    } else if (strcmp(plotType, "hloc") == 0) {
-        // HLOC candlestick: we need yCount == 4 => (Open, High, Low, Close)
-        // We'll use "mplfinance" to plot.  (pip install mplfinance)
-        if (yCount != 4) {
-            fprintf(stderr, "dfPlot Error: 'hloc' plotType requires exactly 4 y columns (O,H,L,C)\n");
-            fclose(pyFile);
-            remove(pyFilename);
-            return;
-        }
-        fprintf(pyFile, "import mplfinance as mpf\n");
-        fprintf(pyFile, "import pandas as pd\n\n");
-
-        // Build candleData = [(x[i], open[i], high[i], low[i], close[i]) ...]
-        fprintf(pyFile, "candleData = []\n");
-        fprintf(pyFile, "for i in range(len(x)):\n");
-        fprintf(pyFile, "    candleData.append((x[i], y0[i], y1[i], y2[i], y3[i]))\n\n");
-
-        // Convert that into a pandas DataFrame with columns = ['time','Open','High','Low','Close']
-        fprintf(pyFile, "df_data = pd.DataFrame(candleData, columns=['time','Open','High','Low','Close'])\n");
-
-        // If x is time in milliseconds, for example, you can convert:
-        //   df_data['time'] = pd.to_datetime(df_data['time'], unit='ms')
-        // If it's just a numeric index, we can skip that. 
-
-        // We'll assume a user might have real time in 'x'. Let's try to parse as ms if you want:
-        fprintf(pyFile, "# If you want to interpret x as timestamps in ms, uncomment:\n");
-        fprintf(pyFile, "df_data['time'] = pd.to_datetime(df_data['time'], unit='ms')\n");
-
-        fprintf(pyFile, "df_data.set_index('time', inplace=True)\n\n");
-
-        // Now plot
-        fprintf(pyFile, "mpf.plot(df_data, type='candle', style='charles', title='HLOC Candlestick')\n");
-
-    } else {
-        // Default: line plot
-        for (size_t i = 0; i < yCount; i++) {
-            const Series* s = dfGetSeries(df, yColIndices[i]);
-            fprintf(pyFile, "plt.plot(x, y%zu, label=\"%s\")\n", i, s->name);
-        }
-        fprintf(pyFile, "plt.xlabel(\"%s\")\n",
-                useIndexAsX ? "Index" : sx->name);
-        fprintf(pyFile, "plt.ylabel(\"Value\")\n");
-        fprintf(pyFile, "plt.title(\"DataFrame Line Plot\")\n");
-        fprintf(pyFile, "plt.legend()\n");
-    }
-
-    // 4) Save or Show
-    if (outputFile && strlen(outputFile) > 0) {
-        fprintf(pyFile, "import matplotlib.pyplot as plt\n");
-        fprintf(pyFile, "plt.savefig(\"%s\")\n", outputFile);
-        fprintf(pyFile, "print(\"Plot saved to %s\")\n", outputFile);
-    } else {
-        fprintf(pyFile, "import matplotlib.pyplot as plt\n");
-        fprintf(pyFile, "plt.show()\n");
-    }
-
-    fclose(pyFile);
-
-    // 5) Run the Python script
-    char cmd[256];
-    snprintf(cmd, sizeof(cmd), "python3 \"%s\"", pyFilename);
-    int ret = system(cmd);
-    if (ret != 0) {
-        fprintf(stderr, "dfPlot Warning: system(\"%s\") returned %d.\n", cmd, ret);
-    }
-
-    // 6) Remove the temp script
-    remove(pyFilename);
-}
-
 
 
 /* -------------------------------------------------------------------------
@@ -1084,6 +846,249 @@ bool readCsv(DataFrame* df, const char* filename) {
     freeCsvBuffer(&cb);
     return true;
 }
+
+
+
+
+/* -------------------------------------------------------------------------
+ * DataFrame Plotting Functions
+ * ------------------------------------------------------------------------- */
+
+ // Forward declarations of internal helper to read numeric data
+static bool getNumericValue(const Series* s, size_t index, double* outVal);
+
+/**
+ * A small utility: attempt to retrieve numeric data (int or double)
+ * from a Series at a given row. Return as a double.
+ */
+/**
+ * Helper: getNumericValue
+ * Attempt to retrieve a numeric value (int or double) from a Series row, 
+ * store it in *outVal as a double. Returns false if out of range or not numeric.
+ */
+static bool getNumericValue(const Series* s, size_t index, double* outVal) {
+    if (!s || !outVal) return false;
+    if (index >= seriesSize(s)) return false;
+
+    if (s->type == DF_INT) {
+        int temp;
+        if (!seriesGetInt(s, index, &temp)) return false;
+        *outVal = (double)temp;
+        return true;
+    }
+    else if (s->type == DF_DOUBLE) {
+        double temp;
+        if (!seriesGetDouble(s, index, &temp)) return false;
+        *outVal = temp;
+        return true;
+    }
+    // Not a numeric column
+    return false;
+}
+
+/**
+ * dfPlot:
+ * Generates a temporary Python script that uses matplotlib (and optionally mplfinance)
+ * to plot DataFrame columns. Supports:
+ *  - "line" (default)
+ *  - "scatter"
+ *  - "hloc" (candlestick), requires exactly 4 y columns: open, high, low, close
+ *
+ * xColIndex = -1 uses the row index as X.
+ * Otherwise we expect xColIndex to be numeric (int/double).
+ * All yColumns must be numeric (int/double).
+ *
+ * If outputFile is non-empty, we call plt.savefig(...), else plt.show() for an interactive window.
+ */
+void dfPlot(const DataFrame* df,
+            size_t xColIndex,
+            const size_t* yColIndices,
+            size_t yCount,
+            const char* plotType,
+            const char* outputFile)
+{
+    if (!df) {
+        fprintf(stderr, "dfPlot Error: DataFrame is NULL.\n");
+        return;
+    }
+    size_t nRows = dfNumRows(df);
+    size_t nCols = dfNumColumns(df);
+    if (nRows == 0 || nCols == 0) {
+        fprintf(stderr, "dfPlot Error: DataFrame is empty.\n");
+        return;
+    }
+    if (!yColIndices || yCount == 0) {
+        fprintf(stderr, "dfPlot Error: Must provide at least one y column.\n");
+        return;
+    }
+    if (!plotType) {
+        plotType = "line"; // default
+    }
+
+    // Check if xColIndex == (size_t)-1 => use row index as X
+    bool useIndexAsX = (xColIndex == (size_t)-1);
+
+    // Validate Y columns must be numeric
+    for (size_t i = 0; i < yCount; i++) {
+        const Series* sy = dfGetSeries(df, yColIndices[i]);
+        if (!sy) {
+            fprintf(stderr, "dfPlot Error: Invalid yCol index %zu.\n", yColIndices[i]);
+            return;
+        }
+        if (sy->type != DF_INT && sy->type != DF_DOUBLE) {
+            fprintf(stderr,
+                    "dfPlot Error: Column '%s' is not numeric (type=%d). Cannot plot.\n",
+                    sy->name, (int)sy->type);
+            return;
+        }
+    }
+
+    // If using a real column as X, check that it's numeric
+    const Series* sx = NULL;
+    if (!useIndexAsX) {
+        sx = dfGetSeries(df, xColIndex);
+        if (!sx) {
+            fprintf(stderr, "dfPlot Error: Invalid xCol index %zu.\n", xColIndex);
+            return;
+        }
+        if (sx->type != DF_INT && sx->type != DF_DOUBLE) {
+            fprintf(stderr,
+                    "dfPlot Error: X column '%s' is not numeric. Cannot plot.\n",
+                    sx->name);
+            return;
+        }
+    }
+
+    // Create the temporary Python script
+    const char* pyFilename = "temp_plot.py";
+    FILE* pyFile = fopen(pyFilename, "w");
+    if (!pyFile) {
+        fprintf(stderr, "dfPlot Error: Unable to open temp file '%s' for writing.\n", pyFilename);
+        return;
+    }
+
+    // Basic imports
+    fprintf(pyFile, "import matplotlib.pyplot as plt\n");
+    fprintf(pyFile, "import sys\n\n");
+
+    // 1) Create X array (either row indices or numeric column)
+    if (useIndexAsX) {
+        // Use row indices 0..(nRows-1)
+        fprintf(pyFile, "x = [");
+        for (size_t r = 0; r < nRows; r++) {
+            fprintf(pyFile, "%zu", r);
+            if (r < nRows - 1) fprintf(pyFile, ", ");
+        }
+        fprintf(pyFile, "]\n");
+    } else {
+        fprintf(pyFile, "x = [");
+        for (size_t r = 0; r < nRows; r++) {
+            double val = 0.0;
+            getNumericValue(sx, r, &val);
+            fprintf(pyFile, "%g", val);
+            if (r < nRows - 1) fprintf(pyFile, ", ");
+        }
+        fprintf(pyFile, "]\n");
+    }
+
+    // 2) Create each Y array: y0, y1, etc.
+    for (size_t i = 0; i < yCount; i++) {
+        const Series* s = dfGetSeries(df, yColIndices[i]);
+        fprintf(pyFile, "y%zu = [", i);
+        for (size_t r = 0; r < nRows; r++) {
+            double val = 0.0;
+            getNumericValue(s, r, &val);
+            fprintf(pyFile, "%g", val);
+            if (r < nRows - 1) fprintf(pyFile, ", ");
+        }
+        fprintf(pyFile, "]\n");
+    }
+
+    // 3) Plot logic
+    if (strcmp(plotType, "scatter") == 0) {
+        // scatter plot
+        for (size_t i = 0; i < yCount; i++) {
+            const Series* s = dfGetSeries(df, yColIndices[i]);
+            fprintf(pyFile, "plt.scatter(x, y%zu, label=\"%s\")\n", i, s->name);
+        }
+        fprintf(pyFile, "plt.xlabel(\"%s\")\n",
+                useIndexAsX ? "Index" : sx->name);
+        fprintf(pyFile, "plt.ylabel(\"Value\")\n");
+        fprintf(pyFile, "plt.title(\"DataFrame Scatter Plot\")\n");
+        fprintf(pyFile, "plt.legend()\n");
+
+    } else if (strcmp(plotType, "hloc") == 0) {
+        // HLOC candlestick: we need yCount == 4 => (Open, High, Low, Close)
+        // We'll use "mplfinance" to plot.  (pip install mplfinance)
+        if (yCount != 4) {
+            fprintf(stderr, "dfPlot Error: 'hloc' plotType requires exactly 4 y columns (O,H,L,C)\n");
+            fclose(pyFile);
+            remove(pyFilename);
+            return;
+        }
+        fprintf(pyFile, "import mplfinance as mpf\n");
+        fprintf(pyFile, "import pandas as pd\n\n");
+
+        // Build candleData = [(x[i], open[i], high[i], low[i], close[i]) ...]
+        fprintf(pyFile, "candleData = []\n");
+        fprintf(pyFile, "for i in range(len(x)):\n");
+        fprintf(pyFile, "    candleData.append((x[i], y0[i], y1[i], y2[i], y3[i]))\n\n");
+
+        // Convert that into a pandas DataFrame with columns = ['time','Open','High','Low','Close']
+        fprintf(pyFile, "df_data = pd.DataFrame(candleData, columns=['time','Open','High','Low','Close'])\n");
+
+        // If x is time in milliseconds, for example, you can convert:
+        //   df_data['time'] = pd.to_datetime(df_data['time'], unit='ms')
+        // If it's just a numeric index, we can skip that. 
+
+        // We'll assume a user might have real time in 'x'. Let's try to parse as ms if you want:
+        fprintf(pyFile, "# If you want to interpret x as timestamps in ms, uncomment:\n");
+        fprintf(pyFile, "df_data['time'] = pd.to_datetime(df_data['time'], unit='ms')\n");
+
+        fprintf(pyFile, "df_data.set_index('time', inplace=True)\n\n");
+
+        // Now plot
+        fprintf(pyFile, "mpf.plot(df_data, type='candle', style='charles', title='HLOC Candlestick')\n");
+
+    } else {
+        // Default: line plot
+        for (size_t i = 0; i < yCount; i++) {
+            const Series* s = dfGetSeries(df, yColIndices[i]);
+            fprintf(pyFile, "plt.plot(x, y%zu, label=\"%s\")\n", i, s->name);
+        }
+        fprintf(pyFile, "plt.xlabel(\"%s\")\n",
+                useIndexAsX ? "Index" : sx->name);
+        fprintf(pyFile, "plt.ylabel(\"Value\")\n");
+        fprintf(pyFile, "plt.title(\"DataFrame Line Plot\")\n");
+        fprintf(pyFile, "plt.legend()\n");
+    }
+
+    // 4) Save or Show
+    if (outputFile && strlen(outputFile) > 0) {
+        fprintf(pyFile, "import matplotlib.pyplot as plt\n");
+        fprintf(pyFile, "plt.savefig(\"%s\")\n", outputFile);
+        fprintf(pyFile, "print(\"Plot saved to %s\")\n", outputFile);
+    } else {
+        fprintf(pyFile, "import matplotlib.pyplot as plt\n");
+        fprintf(pyFile, "plt.show()\n");
+    }
+
+    fclose(pyFile);
+
+    // 5) Run the Python script
+    char cmd[256];
+    snprintf(cmd, sizeof(cmd), "python3 \"%s\"", pyFilename);
+    int ret = system(cmd);
+    if (ret != 0) {
+        fprintf(stderr, "dfPlot Warning: system(\"%s\") returned %d.\n", cmd, ret);
+    }
+
+    // 6) Remove the temp script
+    remove(pyFilename);
+}
+
+
+
 
 /* -------------------------------------------------------------------------
  * Date Parsing and Conversion
