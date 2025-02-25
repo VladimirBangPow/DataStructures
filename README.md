@@ -728,6 +728,14 @@ In essence, the core logic of BFS, DFS, or Dijkstra’s remains the same regardl
 - If all edges have the same weight (e.g., weight = 1), BFS still finds the shortest path in terms of “number of edges” (or total uniform cost).
 - If the graph has different weights, BFS is no longer suitable for shortest paths, and you’d typically use Dijkstra or another weighted shortest-path algorithm.
 
+![AdjacencyListBFS1](diagrams/AdjacencyListBFS1.png "AdjacencyListBFS1")
+![AdjacencyListBFS2](diagrams/AdjacencyListBFS2.png "AdjacencyListBFS2")
+![AdjacencyListBFS3](diagrams/AdjacencyListBFS3.png "AdjacencyListBFS3")
+![AdjacencyListBFS4](diagrams/AdjacencyListBFS4.png "AdjacencyListBFS4")
+![AdjacencyListBFS5](diagrams/AdjacencyListBFS5.png "AdjacencyListBFS5")
+![AdjacencyListBFS6](diagrams/AdjacencyListBFS6.png "AdjacencyListBFS6")
+
+
 ##### Summary: The BFS procedure itself does not change much—just respect the direction of edges if the graph is directed. If the graph is weighted with different costs, BFS won’t give the true minimal-cost path.
 
 ### 2. DFS
