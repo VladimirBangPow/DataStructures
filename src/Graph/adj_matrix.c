@@ -3,7 +3,9 @@
 #include <stdbool.h>
 #include <string.h>
 #include "graph.h"        /* or your main header that references createAdjMatrixImpl */
-
+#include "../Queue/queue.h"
+#include "../PriorityQueue/pq.h"
+#include <float.h> // for DBL_MAX
 /* 
  * A simple adjacency matrix implementation:
  *  - 'matrix[i][j] = -1.0' => no edge
@@ -11,6 +13,8 @@
  *  - vertexData[i] holds the pointer to user data
  *  - 'size' is how many vertices are actually in use
  *  - 'capacity' is the allocated dimension for vertexData[] and matrix[][]
+ *  - vertexData[i] is a void* that references the actual data for vertex i.
+ *  - matrix[i][j] says whether vertex i is connected to vertex j (and with what weight).
  */
 typedef struct {
     GraphType   type;
@@ -40,15 +44,18 @@ static bool isDirected(GraphType t) {
    Local forward declarations of our function pointers 
    that match the GraphOps structure.
    ---------------------------------------------------------------- */
-static bool   adjMatrixAddVertex    (void* impl, void* data);
-static bool   adjMatrixRemoveVertex (void* impl, const void* data);
-static bool   adjMatrixAddEdge      (void* impl, const void* srcData, const void* dstData, double weight);
-static bool   adjMatrixRemoveEdge   (void* impl, const void* srcData, const void* dstData);
+static bool   adjMatrixAddVertex      (void* impl, void* data);
+static bool   adjMatrixRemoveVertex   (void* impl, const void* data);
+static bool   adjMatrixAddEdge        (void* impl, const void* srcData, const void* dstData, double weight);
+static bool   adjMatrixRemoveEdge     (void* impl, const void* srcData, const void* dstData);
 static int    adjMatrixGetNumVertices (const void* impl);
 static int    adjMatrixGetNumEdges    (const void* impl);
-static bool   adjMatrixHasEdge      (const void* impl, const void* srcData, const void* dstData, double* outWeight);
-static void   adjMatrixPrint        (const void* impl, void (*printData)(const void*));
-static void   adjMatrixDestroy      (void* impl);
+static bool   adjMatrixHasEdge        (const void* impl, const void* srcData, const void* dstData, double* outWeight);
+static void   adjMatrixPrint          (const void* impl, void (*printData)(const void*));
+static void   adjMatrixDestroy        (void* impl);
+static void** adjMatrixBFS            (void* impl, const void* startData, int* outCount);
+static void** adjMatrixDFS            (void* impl, const void* startData, int* outCount);
+static double* adjMatrixDijkstra      (void* impl, const void* startData);
 
 /* The function-pointer table for adjacency matrix */
 static const GraphOps adjMatrixOps = {
@@ -60,7 +67,10 @@ static const GraphOps adjMatrixOps = {
     .getNumEdges    = adjMatrixGetNumEdges,
     .hasEdge        = adjMatrixHasEdge,
     .print          = adjMatrixPrint,
-    .destroy        = adjMatrixDestroy
+    .destroy        = adjMatrixDestroy,
+    .bfs            = adjMatrixBFS,
+    .dfs            = adjMatrixDFS,
+    .dijkstra       = adjMatrixDijkstra
 };
 
 
@@ -142,62 +152,112 @@ static int findVertexIndex(const AdjacencyMatrixImpl* impl, const void* data) {
      - vertexData
      - matrix (each row, plus new rows)
    ---------------------------------------------------------------- */
-static bool resizeMatrix(AdjacencyMatrixImpl* impl) {
+   static bool resizeMatrix(AdjacencyMatrixImpl* impl) {
+    /* Only resize if we've actually reached current capacity. */
     if (impl->size < impl->capacity) {
-        return true;  /* no need to resize yet */
+        return true;  /* no need to resize. */
     }
+
     int oldCap = impl->capacity;
     int newCap = oldCap * 2;
 
-    /* Resize vertexData array */
+    /* 1) Expand vertexData to newCap */
     void** newData = (void**)realloc(impl->vertexData, sizeof(void*) * (size_t)newCap);
-    if (!newData) return false;
+    if (!newData) {
+        return false; /* out of memory, rollback not needed as we haven't modified anything yet */
+    }
     impl->vertexData = newData;
-    /* initialize the new portion to NULL */
+    /* Initialize the newly added slots in vertexData to NULL */
     for (int i = oldCap; i < newCap; i++) {
         impl->vertexData[i] = NULL;
     }
 
-    /* Expand matrix pointer array */
+    /* 2) Expand the array-of-row-pointers: impl->matrix => newCap */
     double** newMatrix = (double**)realloc(impl->matrix, sizeof(double*) * (size_t)newCap);
-    if (!newMatrix) return false;
+    if (!newMatrix) {
+        /* We must rollback the vertexData expansion we just did. */
+        /* In theory, we could do a shrink of vertexData. 
+           Or at least set them back: but we’ll do an even simpler approach 
+           since we haven't changed impl->matrix yet. */
+
+        /* Let's do a shrink attempt (not always guaranteed to succeed). */
+        void** shrinkData = (void**)realloc(impl->vertexData, sizeof(void*) * (size_t)oldCap);
+        if (shrinkData) {
+            impl->vertexData = shrinkData;
+        }
+        /* or set them to the old pointer if we tracked it. For brevity, we do a best effort. */
+
+        return false;
+    }
     impl->matrix = newMatrix;
 
-    /* For newly added rows, allocate them and init to -1 */
+    /* 3) Allocate brand-new rows for indices [oldCap..newCap-1] */
     for (int i = oldCap; i < newCap; i++) {
         impl->matrix[i] = (double*)malloc(sizeof(double) * (size_t)newCap);
         if (!impl->matrix[i]) {
-            // roll back partial
+            /* partial rollback: free newly allocated rows so far [oldCap..i-1], 
+               then restore old pointer array if possible */
             for (int k = oldCap; k < i; k++) {
                 free(impl->matrix[k]);
                 impl->matrix[k] = NULL;
             }
+
+            /* Attempt to shrink matrix pointer array back to oldCap (best effort). */
+            double** shrinkRows = (double**)realloc(impl->matrix, sizeof(double*) * (size_t)oldCap);
+            if (shrinkRows) {
+                impl->matrix = shrinkRows;
+            }
+            /* Also shrink vertexData if possible (again best effort). */
+            void** shrinkData = (void**)realloc(impl->vertexData, sizeof(void*) * (size_t)oldCap);
+            if (shrinkData) {
+                impl->vertexData = shrinkData;
+            }
+
             return false;
         }
-        /* init row i to -1.0 */
+        /* Initialize the new row i to -1.0 => no edge. */
         for (int j = 0; j < newCap; j++) {
             impl->matrix[i][j] = -1.0;
         }
     }
 
-    /* Now we must expand each existing row from oldCap to newCap columns */
+    /* 4) Expand existing rows [0..oldCap-1] from oldCap to newCap columns. */
     for (int i = 0; i < oldCap; i++) {
         double* newRow = (double*)realloc(impl->matrix[i], sizeof(double) * (size_t)newCap);
         if (!newRow) {
-            // rollback would be tricky; consider it an error 
-            // or you'd do a 2-phase approach
+
+            /* 4b) free the brand-new rows [oldCap..newCap-1] */
+            for (int nr = oldCap; nr < newCap; nr++) {
+                free(impl->matrix[nr]);
+                impl->matrix[nr] = NULL;
+            }
+            /* 4c) Attempt to shrink matrix pointer array back to oldCap. 
+                   This means we "undo" the step of expanding to newCap pointer slots. */
+            double** shrinkRows = (double**)realloc(impl->matrix, sizeof(double*) * (size_t)oldCap);
+            if (shrinkRows) {
+                impl->matrix = shrinkRows;
+            }
+            /* 4d) Attempt to revert vertexData to oldCap as well. */
+            void** shrinkData = (void**)realloc(impl->vertexData, sizeof(void*) * (size_t)oldCap);
+            if (shrinkData) {
+                impl->vertexData = shrinkData;
+            }
+
             return false;
         }
+
+        /* If realloc succeeded, store new pointer and init new columns. */
         impl->matrix[i] = newRow;
-        /* init new columns to -1 */
         for (int j = oldCap; j < newCap; j++) {
             impl->matrix[i][j] = -1.0;
         }
     }
 
+    /* 5) Update capacity and return success. */
     impl->capacity = newCap;
     return true;
 }
+
 
 /* ----------------------------------------------------------------
    freeMatrix: used in destroy
@@ -463,3 +523,195 @@ static void adjMatrixDestroy(void* _impl) {
     free(impl);
 }
 
+/* ----------------------------------------------------------------
+   BFS and DFS
+   We'll use a queue for BFS and a recursive DFS helper.
+   ---------------------------------------------------------------- */
+
+static void** adjMatrixBFS(void* _impl, const void* startData, int* outCount) {
+    AdjacencyMatrixImpl* impl = (AdjacencyMatrixImpl*)_impl;
+    if (!impl || !startData) {
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
+
+    // 1) find startIndex
+    int startIndex = -1;
+    for (int i = 0; i < impl->size; i++) {
+        if (impl->compare(impl->vertexData[i], startData) == 0) {
+            startIndex = i;
+            break;
+        }
+    }
+    if (startIndex < 0) {
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
+
+    bool* visited = (bool*)calloc((size_t)impl->size, sizeof(bool));
+    void** result = (void**)malloc(sizeof(void*) * (size_t)impl->size);
+    if (!visited || !result) {
+        free(visited); free(result);
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
+    int rCount = 0;
+
+    Queue q; 
+    queueInit(&q);
+
+    visited[startIndex] = true;
+    queueEnqueue(&q, &startIndex, sizeof(int));
+
+    while (!queueIsEmpty(&q)) {
+        int front;
+        queueDequeue(&q, &front);
+        // add to BFS result
+        result[rCount++] = impl->vertexData[front];
+
+        // check neighbors by scanning row 'front'
+        for (int j = 0; j < impl->size; j++) {
+            if (impl->matrix[front][j] >= 0.0 && !visited[j]) {
+                visited[j] = true;
+                queueEnqueue(&q, &j, sizeof(int));
+            }
+        }
+    }
+
+    queueClear(&q);
+    free(visited);
+
+    if (outCount) *outCount = rCount;
+    return result;
+}
+
+static void adjMatrixDFSHelper(const AdjacencyMatrixImpl* impl,
+                               int current,
+                               bool* visited,
+                               void** result,
+                               int* rCount)
+{
+    visited[current] = true;
+    result[(*rCount)++] = impl->vertexData[current];
+
+    // check row 'current' for neighbors
+    for (int j = 0; j < impl->size; j++) {
+        if (impl->matrix[current][j] >= 0.0 && !visited[j]) {
+            adjMatrixDFSHelper(impl, j, visited, result, rCount);
+        }
+    }
+}
+
+static void** adjMatrixDFS(void* _impl, const void* startData, int* outCount) {
+    AdjacencyMatrixImpl* impl = (AdjacencyMatrixImpl*)_impl;
+    if (!impl || !startData) {
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
+
+    int startIndex = -1;
+    for (int i = 0; i < impl->size; i++) {
+        if (impl->compare(impl->vertexData[i], startData) == 0) {
+            startIndex = i;
+            break;
+        }
+    }
+    if (startIndex < 0) {
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
+
+    bool* visited = (bool*)calloc((size_t)impl->size, sizeof(bool));
+    void** result = (void**)malloc(sizeof(void*) * (size_t)impl->size);
+    if (!visited || !result) {
+        free(visited); free(result);
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
+    int rCount = 0;
+
+    adjMatrixDFSHelper(impl, startIndex, visited, result, &rCount);
+
+    free(visited);
+    if (outCount) *outCount = rCount;
+    return result;
+}
+
+/* ----------------------------------------------------------------
+   Dijkstra's algorithm
+   We'll use a priority queue to store vertices to visit.
+   We'll store the distance to each vertex in a double array.
+   ---------------------------------------------------------------- */
+typedef struct {
+    int vertex;
+    double dist;
+} MatDijkstraNode;
+
+static int matDijkstraCompare(const void* a, const void* b) {
+    const MatDijkstraNode* da = (const MatDijkstraNode*)a;
+    const MatDijkstraNode* db = (const MatDijkstraNode*)b;
+    if (da->dist < db->dist) return -1;
+    if (da->dist > db->dist) return 1;
+    return 0;
+}
+
+static double* adjMatrixDijkstra(void* _impl, const void* startData) {
+    AdjacencyMatrixImpl* impl = (AdjacencyMatrixImpl*)_impl;
+    if (!impl || !startData) return NULL;
+
+    // find startIndex
+    int startIndex = -1;
+    for (int i = 0; i < impl->size; i++) {
+        if (impl->compare(impl->vertexData[i], startData) == 0) {
+            startIndex = i;
+            break;
+        }
+    }
+    if (startIndex < 0) return NULL;
+
+    double* dist = (double*)malloc(sizeof(double)*impl->size);
+    if (!dist) return NULL;
+    for (int i = 0; i < impl->size; i++) {
+        dist[i] = DBL_MAX;
+    }
+    dist[startIndex] = 0.0;
+
+    bool* visited = (bool*)calloc((size_t)impl->size, sizeof(bool));
+    if (!visited) {
+        free(dist);
+        return NULL;
+    }
+
+    PriorityQueue pq;
+    pqInit(&pq, matDijkstraCompare, true, 16);
+
+    MatDijkstraNode startN = { startIndex, 0.0 };
+    pqPush(&pq, &startN, sizeof(MatDijkstraNode));
+
+    while (!pqIsEmpty(&pq)) {
+        MatDijkstraNode curr;
+        size_t cSize = sizeof(MatDijkstraNode);
+        if (!pqPop(&pq, &curr, &cSize)) break;
+
+        int u = curr.vertex;
+        if (visited[u]) continue;
+        visited[u] = true;
+
+        // relax edges from u by scanning row u
+        for (int v = 0; v < impl->size; v++) {
+            double w = impl->matrix[u][v];
+            if (w >= 0.0 && !visited[v]) {  // there's an edge u->v
+                double alt = dist[u] + w;
+                if (alt < dist[v]) {
+                    dist[v] = alt;
+                    MatDijkstraNode nd = { v, alt };
+                    pqPush(&pq, &nd, sizeof(MatDijkstraNode));
+                }
+            }
+        }
+    }
+
+    pqFree(&pq);
+    free(visited);
+    return dist;
+}

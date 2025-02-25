@@ -11,7 +11,9 @@
  
  #include "graph.h"          /* Declares GraphOps, GraphType, createAdjListImpl(...) */
  #include "../DynamicArray/dynamic_array.h"  /* Your generic dynamic array interface */
- 
+ #include "../Queue/queue.h"
+ #include "../PriorityQueue/pq.h" // or whichever min-heap structure you have
+
  /*
   * We'll store each edge as a small struct with:
   *   - destIndex: index of the destination vertex
@@ -439,6 +441,230 @@
      free(impl);
  }
  
+/***************************************************************************
+*                OPS Implementation: BFS, DFS, Dijkstra
+***************************************************************************/
+
+
+
+ static void** adjListBFS(void* _impl, const void* startData, int* outCount) {
+    AdjacencyListImpl* impl = (AdjacencyListImpl*)_impl;
+    if (!impl || !startData) {
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
+
+    // 1) find startIndex
+    int startIndex = -1;
+    size_t n = daSize(&impl->vertices);
+    for (size_t i = 0; i < n; i++) {
+        const VertexItem* v = (const VertexItem*)daGet(&impl->vertices, i);
+        if (impl->compare(v->data, startData) == 0) {
+            startIndex = (int)i;
+            break;
+        }
+    }
+    if (startIndex < 0) {
+        // not found
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
+
+    // 2) typical BFS
+    bool* visited = (bool*)calloc(n, sizeof(bool));
+    if (!visited) {
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
+    void** result = (void**)malloc(sizeof(void*) * n);
+    if (!result) {
+        free(visited);
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
+    int rCount = 0;
+
+    Queue q; // assume you have queueInit, queueEnqueue, etc.
+    queueInit(&q);
+
+    // enqueue startIndex
+    visited[startIndex] = true;
+    queueEnqueue(&q, &startIndex, sizeof(int));
+
+    while (!queueIsEmpty(&q)) {
+        int front;
+        queueDequeue(&q, &front);
+
+        // add to BFS result
+        const VertexItem* v = (const VertexItem*)daGet(&impl->vertices, (size_t)front);
+        result[rCount++] = v->data;
+
+        // for each neighbor
+        size_t ecount = daSize(&v->edges);
+        for (size_t i = 0; i < ecount; i++) {
+            const Edge* e = (const Edge*)daGet(&v->edges, i);
+            int nbr = e->destIndex;
+            if (!visited[nbr]) {
+                visited[nbr] = true;
+                queueEnqueue(&q, &nbr, sizeof(int));
+            }
+        }
+    }
+
+    queueClear(&q);
+    free(visited);
+
+    if (outCount) *outCount = rCount;
+    return result;
+}
+
+static void dfsHelper(const AdjacencyListImpl* impl,
+                      int currentIndex,
+                      bool* visited,
+                      void** result,
+                      int* rCount) 
+{
+    visited[currentIndex] = true;
+    const VertexItem* v = (const VertexItem*)daGet(&impl->vertices, (size_t)currentIndex);
+    result[(*rCount)++] = v->data;
+
+    // neighbors
+    size_t ecount = daSize(&v->edges);
+    for (size_t i = 0; i < ecount; i++) {
+        const Edge* e = (const Edge*)daGet(&v->edges, i);
+        int nbr = e->destIndex;
+        if (!visited[nbr]) {
+            dfsHelper(impl, nbr, visited, result, rCount);
+        }
+    }
+}
+
+static void** adjListDFS(void* _impl, const void* startData, int* outCount) {
+    AdjacencyListImpl* impl = (AdjacencyListImpl*)_impl;
+    if (!impl || !startData) {
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
+
+    // find startIndex
+    int startIndex = -1;
+    size_t n = daSize(&impl->vertices);
+    for (size_t i = 0; i < n; i++) {
+        const VertexItem* v = (const VertexItem*)daGet(&impl->vertices, i);
+        if (impl->compare(v->data, startData) == 0) {
+            startIndex = (int)i;
+            break;
+        }
+    }
+    if (startIndex < 0) {
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
+
+    bool* visited = (bool*)calloc(n, sizeof(bool));
+    if (!visited) {
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
+    void** result = (void**)malloc(sizeof(void*) * n);
+    if (!result) {
+        free(visited);
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
+    int rCount = 0;
+
+    dfsHelper(impl, startIndex, visited, result, &rCount);
+
+    free(visited);
+    if (outCount) *outCount = rCount;
+    return result;
+}
+
+typedef struct {
+    int vertexIndex;
+    double distance;
+} DijkstraNode;
+
+static int dijkstraNodeCompare(const void* a, const void* b) {
+    const DijkstraNode* da = (const DijkstraNode*)a;
+    const DijkstraNode* db = (const DijkstraNode*)b;
+    if (da->distance < db->distance) return -1;
+    else if (da->distance > db->distance) return 1;
+    return 0;
+}
+
+static double* adjListDijkstra(void* _impl, const void* startData) {
+    AdjacencyListImpl* impl = (AdjacencyListImpl*)_impl;
+    if (!impl || !startData) return NULL;
+
+    // 1) find startIndex
+    int startIndex = -1;
+    size_t n = daSize(&impl->vertices);
+    for (size_t i = 0; i < n; i++) {
+        const VertexItem* v = (const VertexItem*)daGet(&impl->vertices, i);
+        if (impl->compare(v->data, startData) == 0) {
+            startIndex = (int)i;
+            break;
+        }
+    }
+    if (startIndex < 0) return NULL;
+
+    // 2) dist array
+    double* dist = (double*)malloc(sizeof(double)*n);
+    if (!dist) return NULL;
+    for (size_t i = 0; i < n; i++) {
+        dist[i] = 1e15; // large number or DBL_MAX
+    }
+    dist[startIndex] = 0.0;
+
+    bool* visited = (bool*)calloc(n, sizeof(bool));
+    if (!visited) {
+        free(dist);
+        return NULL;
+    }
+
+    PriorityQueue pq;
+    pqInit(&pq, dijkstraNodeCompare, true, 16); // min-heap
+
+    DijkstraNode startNode = { startIndex, 0.0 };
+    pqPush(&pq, &startNode, sizeof(DijkstraNode));
+
+    while (!pqIsEmpty(&pq)) {
+        DijkstraNode current;
+        size_t cSize = sizeof(DijkstraNode);
+        bool ok = pqPop(&pq, &current, &cSize);
+        if (!ok) break;
+
+        int u = current.vertexIndex;
+        if (visited[u]) continue;
+        visited[u] = true;
+
+        // relax edges from u
+        const VertexItem* v = (const VertexItem*)daGet(&impl->vertices, (size_t)u);
+        size_t ecount = daSize(&v->edges);
+        for (size_t i = 0; i < ecount; i++) {
+            const Edge* e = (const Edge*)daGet(&v->edges, i);
+            int nbr = e->destIndex;
+            double w = e->weight; // assume nonnegative
+            if (!visited[nbr]) {
+                double alt = dist[u] + w;
+                if (alt < dist[nbr]) {
+                    dist[nbr] = alt;
+                    DijkstraNode nd = { nbr, alt };
+                    pqPush(&pq, &nd, sizeof(DijkstraNode));
+                }
+            }
+        }
+    }
+
+    pqFree(&pq);
+    free(visited);
+    return dist;
+}
+
+
+
  /***************************************************************************
   *         The function pointer table (GraphOps) for adjacency list
   ***************************************************************************/
@@ -451,6 +677,9 @@
      .getNumEdges    = adjListGetNumEdges,
      .hasEdge        = adjListHasEdge,
      .print          = adjListPrint,
-     .destroy        = adjListDestroy
+     .destroy        = adjListDestroy,
+     .bfs            = adjListBFS,
+     .dfs            = adjListDFS,
+     .dijkstra       = adjListDijkstra
  };
  

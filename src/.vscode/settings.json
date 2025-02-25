@@ -25,6 +25,7 @@
         "dataframe.h": "c",
         "test_dataframe.h": "c",
         "test_series.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "pq.h": "c"
     }
 }

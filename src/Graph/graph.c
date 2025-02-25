@@ -104,3 +104,25 @@ void destroyGraph(Graph* graph) {
     graph->impl = NULL;
     free(graph);
 }
+
+void** graphBFS(const Graph* g, const void* startData, int* outCount) {
+    if (!g) {
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
+    return g->ops->bfs(g->impl, startData, outCount);
+}
+
+void** graphDFS(const Graph* g, const void* startData, int* outCount) {
+    if (!g) {
+        if (outCount) *outCount = 0;
+        return NULL;
+    }
+    return g->ops->dfs(g->impl, startData, outCount);
+}
+
+double* graphDijkstra(const Graph* g, const void* startData) {
+    if (!g) return NULL;
+    return g->ops->dijkstra(g->impl, startData);
+}
+

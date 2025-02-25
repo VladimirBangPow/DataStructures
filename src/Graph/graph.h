@@ -23,15 +23,19 @@ typedef enum {
  * then we define adjacency-list ops in adj_list.c, adjacency-matrix ops in adj_matrix.c.
  */
 typedef struct GraphOps {
-    bool (*addVertex)(void* impl, void* data);
-    bool (*removeVertex)(void* impl, const void* data);
-    bool (*addEdge)(void* impl, const void* srcData, const void* dstData, double weight);
-    bool (*removeEdge)(void* impl, const void* srcData, const void* dstData);
-    int  (*getNumVertices)(const void* impl);
-    int  (*getNumEdges)(const void* impl);
-    bool (*hasEdge)(const void* impl, const void* srcData, const void* dstData, double* outWeight);
-    void (*print)(const void* impl, void (*printData)(const void*));
-    void (*destroy)(void* impl);
+    // existing function pointers
+    bool   (*addVertex)(void* impl, void* data);
+    bool   (*removeVertex)(void* impl, const void* data);
+    bool   (*addEdge)(void* impl, const void* srcData, const void* dstData, double weight);
+    bool   (*removeEdge)(void* impl, const void* srcData, const void* dstData);
+    int    (*getNumVertices)(const void* impl);
+    int    (*getNumEdges)(const void* impl);
+    bool   (*hasEdge)(const void* impl, const void* srcData, const void* dstData, double* outWeight);
+    void   (*print)(const void* impl, void (*printData)(const void*));
+    void   (*destroy)(void* impl);
+    void**  (*bfs)(void* impl, const void* startData, int* outCount);
+    void**  (*dfs)(void* impl, const void* startData, int* outCount);
+    double* (*dijkstra)(void* impl, const void* startData);
 } GraphOps;
 
 /* Our public Graph struct definition (hidden from user) */
@@ -66,6 +70,9 @@ int  getNumEdges   (const Graph* graph);
 bool hasEdge        (const Graph* graph, const void* srcData, const void* dstData, double* outWeight);
 void printGraph     (const Graph* graph, void (*printData)(const void*));
 void destroyGraph   (Graph* graph);
+void** graphBFS(const Graph* g, const void* startData, int* outCount);
+void** graphDFS(const Graph* g, const void* startData, int* outCount);
+double* graphDijkstra(const Graph* g, const void* startData);
 
 /* Possibly BFS/DFS, etc. 
  * Or we provide an interface to iterate neighbors, so BFS is done externally. */
