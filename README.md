@@ -779,6 +779,16 @@ In essence, the core logic of BFS, DFS, or Dijkstra’s remains the same regardl
 - Unweighted: Dijkstra still “works” but is overkill—BFS is typically simpler and more efficient if all edges have the same cost (like weight = 1).
 - If there are negative edge weights, you need a different algorithm (e.g., Bellman-Ford).
 
+![Dijkstra1](diagrams/Dijkstra1.png "Dijkstra1")
+![Dijkstra2](diagrams/Dijkstra2.png "Dijkstra2")
+![Dijkstra3](diagrams/Dijkstra3.png "Dijkstra3")
+![Dijkstra4](diagrams/Dijkstra4.png "Dijkstra4")
+![Dijkstra5](diagrams/Dijkstra5.png "Dijkstra5")
+![Dijkstra6](diagrams/Dijkstra6.png "Dijkstra6")
+
+
+
+
 ##### Summary: The Dijkstra procedure is the same. The difference is in how edges are stored (two directions for undirected vs. one for directed) and whether each edge has a real cost or a uniform cost.
 
 ### Bottom Line
