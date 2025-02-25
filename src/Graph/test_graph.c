@@ -214,7 +214,7 @@ static void stressTest(GraphType type,
     assert(g != NULL);
 
     /* We'll create up to n vertices */
-    int n = 50;
+    int n = 5000;
     /* store pointers in an array so we can remove them easily */
     void** arr = (void**)malloc(sizeof(void*) * (size_t)n);
     for (int i = 0; i < n; i++) {
@@ -288,12 +288,6 @@ static void stressTest(GraphType type,
     /* Clean up */
     destroyGraph(g);
 
-    // /* free array of pointers. We allocated them with createData. */
-    // for (int i = 0; i < n; i++) {
-    //     if (arr[i]) {
-    //         freeFunc(arr[i]);
-    //     }
-    // }
     free(arr);
 
     printf("[OK] stressTest <%s>, %s\n", label,
