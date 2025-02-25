@@ -777,17 +777,6 @@ In essence, the core logic of BFS, DFS, or Dijkstra’s remains the same regardl
 - Use or ignore edge weights (for BFS/DFS, you ignore them; for Dijkstra, you use them if they are nonnegative).
 
 
-## Adjacency List
-
-Each node has a list of its neighbors. More efficient for sparse graphs.
-
-## Adjacency Matrix
-
-A 2D matrix (size V×V) indicating existence/weight of edges. Easier for dense graphs or if you need fast existence checks.
-
-## Incidence List / Incidence Matrix
-
-Less commonly used but sometimes helpful for certain algorithms.
 
 # 4. Specialized/Advanced Data Structures
 ## Suffix Tree
