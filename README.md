@@ -699,13 +699,17 @@ Can be directed, undirected, weighted, or unweighted.
 ![DirectedWeightedGraph](diagrams/DirectedWeightedGraph.png "DirectedWeightedGraph")
 
 
-### Building A Graph:
+### Building A Graph with an Adjacency List:
 
 ![GraphBuild1](diagrams/GraphBuild1.png "GraphBuild1")
 ![GraphBuild2](diagrams/GraphBuild2.png "GraphBuild2")
 ![GraphBuild3](diagrams/GraphBuild3.png "GraphBuild3")
 ![GraphBuild4](diagrams/GraphBuild4.png "GraphBuild4")
 
+### Building A Graph with an Adjacency Matrix:
+![GraphBuild5](diagrams/GraphBuild5.png "GraphBuild5")
+![GraphBuild6](diagrams/GraphBuild6.png "GraphBuild6")
+![GraphBuild7](diagrams/GraphBuild7.png "GraphBuild7")
 
 
 In essence, the core logic of BFS, DFS, or Dijkstra’s remains the same regardless of whether the graph is directed or undirected, weighted or unweighted. However, there are small but important adjustments in how you apply each algorithm to different graph types:
