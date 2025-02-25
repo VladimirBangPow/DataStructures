@@ -750,6 +750,13 @@ In essence, the core logic of BFS, DFS, or Dijkstra’s remains the same regardl
 - DFS makes no use of weights in the standard algorithm.
 - You can ignore weights or treat them as present but irrelevant.
 
+![AdjacencyListDFS1](diagrams/AdjacencyListDFS1.png "AdjacencyListDFS1")
+![AdjacencyListDFS2](diagrams/AdjacencyListDFS2.png "AdjacencyListDFS2")
+![AdjacencyListDFS3](diagrams/AdjacencyListDFS3.png "AdjacencyListDFS3")
+![AdjacencyListDFS4](diagrams/AdjacencyListDFS4.png "AdjacencyListDFS4")
+
+
+
 ##### Summary: DFS is unaffected by weights. The only difference between undirected and directed is whether you consider edges in both directions (undirected) or in the specified direction only (directed).
 
 ### 3. Dijkstra’s Algorithm
