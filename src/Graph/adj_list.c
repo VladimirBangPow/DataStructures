@@ -683,28 +683,28 @@ static double* adjListDijkstra(
     // or you can do path for all. We'll proceed if endIndex >=0.
 
     // dist array
-    double* dist = (double*)malloc(sizeof(double)*n);
-    if (!dist) return NULL;
+    double* distance = (double*)malloc(sizeof(double)*n);
+    if (!distance) return NULL;
     for (size_t i = 0; i < n; i++) {
-        dist[i] = DBL_MAX;
+        distance[i] = DBL_MAX;
     }
-    dist[startIndex] = 0.0;
+    distance[startIndex] = 0.0;
 
     // parent array
-    int* parent = (int*)malloc(sizeof(int)*n);
-    if (!parent) {
-        free(dist);
+    int* parents = (int*)malloc(sizeof(int)*n);
+    if (!parents) {
+        free(distance);
         return NULL;
     }
     for (size_t i = 0; i < n; i++) {
-        parent[i] = -1;
+        parents[i] = -1;
     }
 
     // visited array
     bool* visited = (bool*)calloc(n, sizeof(bool));
     if (!visited) {
-        free(dist);
-        free(parent);
+        free(distance);
+        free(parents);
         return NULL;
     }
 
@@ -726,7 +726,7 @@ static double* adjListDijkstra(
         visited[u] = true;
 
         // If we only care about path to 'endIndex', we could break early if (u == endIndex).
-        // We'll keep going to get full dist[].
+        // We'll keep going to get full distance[].
 
         // Relax edges from u
         const VertexItem* v = (const VertexItem*)daGet(&impl->vertices, (size_t)u);
@@ -736,10 +736,10 @@ static double* adjListDijkstra(
             int nbr = e->destIndex;
             double w = e->weight; // assume nonnegative
             if (!visited[nbr]) {
-                double alt = dist[u] + w;
-                if (alt < dist[nbr]) {
-                    dist[nbr] = alt;
-                    parent[nbr] = u; // record how we got here
+                double alt = distance[u] + w;
+                if (alt < distance[nbr]) {
+                    distance[nbr] = alt;
+                    parents[nbr] = u; // record how we got here
                     DijkstraNode nd = { nbr, alt };
                     pqPush(&pq, &nd, sizeof(DijkstraNode));
                 }
@@ -753,15 +753,15 @@ static double* adjListDijkstra(
     // If endIndex >= 0, let's reconstruct path from startIndex -> endIndex
     // 'path' is a DynamicArray the user gave us to fill with the path of indices
     // We'll store them as int, e.g. 0, 3, 7, ...
-    if (endIndex >= 0 && dist[endIndex] < DBL_MAX) {
+    if (endIndex >= 0 && distance[endIndex] < DBL_MAX) {
         // Clear the 'path' dynamic array first, if desired:
         // you might do daClear(...) if you have such a function.
         // Now do the reconstruction
-        reconstructPath(startIndex, endIndex, parent, path);
+        reconstructPath(startIndex, endIndex, parents, path);
     }
 
-    free(parent);
-    return dist; 
+    free(parents);
+    return distance; 
 }
 
 

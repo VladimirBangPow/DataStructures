@@ -729,17 +729,17 @@ static double* adjMatrixDijkstra(void* _impl,
     }
 
     // dist array
-    double* dist = (double*)malloc(sizeof(double)*impl->size);
-    if (!dist) return NULL;
+    double* distance = (double*)malloc(sizeof(double)*impl->size);
+    if (!distance) return NULL;
     for (int i = 0; i < impl->size; i++) {
-        dist[i] = DBL_MAX;
+        distance[i] = DBL_MAX;
     }
-    dist[startIndex] = 0.0;
+    distance[startIndex] = 0.0;
 
     // parent array
     int* parent = (int*)malloc(sizeof(int)*impl->size);
     if (!parent) {
-        free(dist);
+        free(distance);
         return NULL;
     }
     for (int i=0; i<impl->size; i++){
@@ -749,7 +749,7 @@ static double* adjMatrixDijkstra(void* _impl,
     // visited
     bool* visited = (bool*)calloc((size_t)impl->size, sizeof(bool));
     if (!visited) {
-        free(dist);
+        free(distance);
         free(parent);
         return NULL;
     }
@@ -772,15 +772,15 @@ static double* adjMatrixDijkstra(void* _impl,
         visited[u] = true;
 
         // If we only want to find the path for 'endIndex', we can break early if (u == endIndex).
-        // We'll do a full run though, to fill dist[] anyway.
+        // We'll do a full run though, to fill distance[] anyway.
 
         // relax edges by scanning row u
         for (int v = 0; v < impl->size; v++) {
             double w = impl->matrix[u][v];
             if (w >= 0.0 && !visited[v]) { // there's an edge
-                double alt = dist[u] + w;
-                if (alt < dist[v]) {
-                    dist[v] = alt;
+                double alt = distance[u] + w;
+                if (alt < distance[v]) {
+                    distance[v] = alt;
                     parent[v] = u;   // record how we got here
                     MatDijkstraNode nd = { v, alt };
                     pqPush(&pq, &nd, sizeof(MatDijkstraNode));
@@ -792,12 +792,12 @@ static double* adjMatrixDijkstra(void* _impl,
     pqFree(&pq);
     free(visited);
 
-    // Reconstruct path if endIndex >= 0 and dist[endIndex] != DBL_MAX
-    if (endIndex >= 0 && dist[endIndex] < DBL_MAX) {
+    // Reconstruct path if endIndex >= 0 and distance[endIndex] != DBL_MAX
+    if (endIndex >= 0 && distance[endIndex] < DBL_MAX) {
         // Clear pathOut if needed, or just fill it. We'll do an internal "reconstructPathMatrix".
         reconstructPathMatrix(startIndex, endIndex, parent, pathOut);
     }
 
     free(parent);
-    return dist;
+    return distance;
 }
