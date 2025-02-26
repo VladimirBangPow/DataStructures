@@ -728,6 +728,14 @@ In essence, the core logic of BFS, DFS, or Dijkstra’s remains the same regardl
 - If all edges have the same weight (e.g., weight = 1), BFS still finds the shortest path in terms of “number of edges” (or total uniform cost).
 - If the graph has different weights, BFS is no longer suitable for shortest paths, and you’d typically use Dijkstra or another weighted shortest-path algorithm.
 
+![AdjacencyListBFS1](diagrams/AdjacencyListBFS1.png "AdjacencyListBFS1")
+![AdjacencyListBFS2](diagrams/AdjacencyListBFS2.png "AdjacencyListBFS2")
+![AdjacencyListBFS3](diagrams/AdjacencyListBFS3.png "AdjacencyListBFS3")
+![AdjacencyListBFS4](diagrams/AdjacencyListBFS4.png "AdjacencyListBFS4")
+![AdjacencyListBFS5](diagrams/AdjacencyListBFS5.png "AdjacencyListBFS5")
+![AdjacencyListBFS6](diagrams/AdjacencyListBFS6.png "AdjacencyListBFS6")
+
+
 ##### Summary: The BFS procedure itself does not change much—just respect the direction of edges if the graph is directed. If the graph is weighted with different costs, BFS won’t give the true minimal-cost path.
 
 ### 2. DFS
@@ -741,6 +749,13 @@ In essence, the core logic of BFS, DFS, or Dijkstra’s remains the same regardl
 
 - DFS makes no use of weights in the standard algorithm.
 - You can ignore weights or treat them as present but irrelevant.
+
+![AdjacencyListDFS1](diagrams/AdjacencyListDFS1.png "AdjacencyListDFS1")
+![AdjacencyListDFS2](diagrams/AdjacencyListDFS2.png "AdjacencyListDFS2")
+![AdjacencyListDFS3](diagrams/AdjacencyListDFS3.png "AdjacencyListDFS3")
+![AdjacencyListDFS4](diagrams/AdjacencyListDFS4.png "AdjacencyListDFS4")
+
+
 
 ##### Summary: DFS is unaffected by weights. The only difference between undirected and directed is whether you consider edges in both directions (undirected) or in the specified direction only (directed).
 
@@ -763,6 +778,16 @@ In essence, the core logic of BFS, DFS, or Dijkstra’s remains the same regardl
 - Weighted (nonnegative): Dijkstra is the standard choice to get the minimal total cost path.
 - Unweighted: Dijkstra still “works” but is overkill—BFS is typically simpler and more efficient if all edges have the same cost (like weight = 1).
 - If there are negative edge weights, you need a different algorithm (e.g., Bellman-Ford).
+
+![Dijkstra1](diagrams/Dijkstra1.png "Dijkstra1")
+![Dijkstra2](diagrams/Dijkstra2.png "Dijkstra2")
+![Dijkstra3](diagrams/Dijkstra3.png "Dijkstra3")
+![Dijkstra4](diagrams/Dijkstra4.png "Dijkstra4")
+![Dijkstra5](diagrams/Dijkstra5.png "Dijkstra5")
+![Dijkstra6](diagrams/Dijkstra6.png "Dijkstra6")
+
+
+
 
 ##### Summary: The Dijkstra procedure is the same. The difference is in how edges are stored (two directions for undirected vs. one for directed) and whether each edge has a real cost or a uniform cost.
 
