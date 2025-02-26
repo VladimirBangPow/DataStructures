@@ -5,7 +5,7 @@
 #include <time.h>
 #include "test_graph.h"
 #include "graph.h"  
-
+#include "../DynamicArray/dynamic_array.h"  /* Your generic dynamic array interface */
 /*
  * We assume "graph.h" declares or includes:
  *   - Enums: GraphType, GraphStorage
@@ -197,58 +197,92 @@ static void testDFSOnSmallGraph(GraphType type, GraphStorage storage) {
     printf("[OK] testDFSOnSmallGraph <%s>\n", (storage == GRAPH_STORAGE_LIST ? "adj_list" : "adj_matrix"));
 }
 
-/* Dijkstra test: small weighted shape. We'll confirm distances. */
 static void testDijkstraOnSmallGraph(GraphType type, GraphStorage storage) {
-    /* Weighted edges or unweighted => each edge=1.0. We'll confirm distances from 0. */
+    /* Weighted or unweighted => we'll confirm distances from 0, plus check the path to vertex 3. */
     Graph* g = createGraphImplementation(type, storage, 4, compareInt, freeInt);
     assert(g);
 
+    /* Create int vertices: 0..3 */
     int* v0 = createDataInt(0); addVertex(g, v0);
     int* v1 = createDataInt(1); addVertex(g, v1);
     int* v2 = createDataInt(2); addVertex(g, v2);
     int* v3 = createDataInt(3); addVertex(g, v3);
 
     /* Weighted edges, for example:
-        0--1=2
-        0--2=5
-        1--2=1
-        1--3=4
-        2--3=2
-     */
+       0--1=2
+       0--2=5
+       1--2=1
+       1--3=4
+       2--3=2
+    */
     addEdge(g, v0, v1, 2.0);
     addEdge(g, v0, v2, 5.0);
     addEdge(g, v1, v2, 1.0);
     addEdge(g, v1, v3, 4.0);
     addEdge(g, v2, v3, 2.0);
 
-    double* dist = graphDijkstra(g, v0);
+    /* We'll run Dijkstra from 0 to 3, storing the path in pathOut. */
+    DynamicArray pathOut;
+    daInit(&pathOut, 4);  /* dynamic array to hold the path of vertex indices */
+
+    /* 
+     * Now we call the new Dijkstra signature:
+     *   dist = graphDijkstra(g, startData, endData, &pathOut)
+     */
+    double* dist = graphDijkstra(g, v0, v3, &pathOut);
     assert(dist);
 
+    /* If the graph is Weighted => we expect exact distances. 
+       Unweighted => BFS-like distances. 
+    */
     if (isWeighted(type)) {
         /* Weighted => we expect distances:
-           0 => 0
-           1 => 2
-           2 => 3 (0->1->2 =>2+1)
-           3 => 5 (0->1->2->3 =>2+1+2=5)
+           dist[0] = 0
+           dist[1] = 2
+           dist[2] = 3 (via 0->1->2 =>2+1=3)
+           dist[3] = 5 (via 0->1->2->3 =>2+1+2=5)
         */
         assert(dist[0] == 0.0);
         assert(dist[1] == 2.0);
         assert(dist[2] == 3.0);
         assert(dist[3] == 5.0);
+
+        /* Also check the path in pathOut => [0,1,2,3]. */
+        size_t psize = daSize(&pathOut);
+        /* expecting 4 vertices in the path */
+        assert(psize == 4);
+
+        /* confirm each index matches 0,1,2,3 in order */
+        int expected[4] = {0,1,2,3};
+        for (int i = 0; i < 4; i++) {
+            const int* idxPtr = (const int*)daGet(&pathOut, (size_t)i);
+            assert(idxPtr != NULL);
+            assert(*idxPtr == expected[i]);
+        }
     } else {
         /* Unweighted => BFS-like distances. We'll do a weaker check:
-         * 0 => 0
-         * others => not DBL_MAX
+         * dist[0] => 0
+         * others => not huge => so let's just do < 1e9
          */
         assert(dist[0] == 0.0);
         assert(dist[1] < 1e9);
         assert(dist[2] < 1e9);
         assert(dist[3] < 1e9);
+
+        /* The path might be [0,1,3], or [0,2,3], or [0,1,2,3], depending on adjacency. 
+           We won't strictly assert the exact path, but let's just confirm pathOut has at least 2 steps. 
+        */
+        size_t psize = daSize(&pathOut);
+        assert(psize >= 2);
     }
 
+    /* Cleanup */
+    daFree(&pathOut);
     free(dist);
     destroyGraph(g);
-    printf("[OK] testDijkstraOnSmallGraph <%s>\n", (storage == GRAPH_STORAGE_LIST ? "adj_list" : "adj_matrix"));
+
+    printf("[OK] testDijkstraOnSmallGraph <%s>\n",
+           (storage == GRAPH_STORAGE_LIST ? "adj_list" : "adj_matrix"));
 }
 
 /*******************************************************************

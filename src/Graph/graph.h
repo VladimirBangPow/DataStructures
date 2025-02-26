@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-
+#include "../DynamicArray/dynamic_array.h"  /* Your generic dynamic array interface */
 /* Graph type: is it directed or undirected, weighted or unweighted? */
 typedef enum {
     GRAPH_UNDIRECTED_UNWEIGHTED,
@@ -35,7 +35,7 @@ typedef struct GraphOps {
     void   (*destroy)(void* impl);
     void**  (*bfs)(void* impl, const void* startData, int* outCount);
     void**  (*dfs)(void* impl, const void* startData, int* outCount);
-    double* (*dijkstra)(void* impl, const void* startData);
+    double* (*dijkstra)(void* impl, const void* startData, const void* endData, DynamicArray* path);
 } GraphOps;
 
 /* Our public Graph struct definition (hidden from user) */
@@ -72,7 +72,7 @@ void printGraph     (const Graph* graph, void (*printData)(const void*));
 void destroyGraph   (Graph* graph);
 void** graphBFS(const Graph* g, const void* startData, int* outCount);
 void** graphDFS(const Graph* g, const void* startData, int* outCount);
-double* graphDijkstra(const Graph* g, const void* startData);
+double* graphDijkstra(const Graph* g, const void* startData, const void* endData, DynamicArray* path);
 
 /* Possibly BFS/DFS, etc. 
  * Or we provide an interface to iterate neighbors, so BFS is done externally. */

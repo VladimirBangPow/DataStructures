@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "graph.h"
-
+#include "../DynamicArray/dynamic_array.h"  /* Your generic dynamic array interface */
 
 
 /* We'll forward-declare the adjacency-list and adjacency-matrix "create" 
@@ -121,8 +121,8 @@ void** graphDFS(const Graph* g, const void* startData, int* outCount) {
     return g->ops->dfs(g->impl, startData, outCount);
 }
 
-double* graphDijkstra(const Graph* g, const void* startData) {
+double* graphDijkstra(const Graph* g, const void* startData, const void* endData, DynamicArray* pathOut) {
     if (!g) return NULL;
-    return g->ops->dijkstra(g->impl, startData);
+    return g->ops->dijkstra(g->impl, startData, endData, pathOut);
 }
 

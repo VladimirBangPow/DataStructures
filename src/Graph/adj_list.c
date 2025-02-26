@@ -8,7 +8,8 @@
  #include <stdlib.h>
  #include <stdbool.h>
  #include <string.h>
- 
+ #include <float.h> // for DBL_MAX
+
  #include "graph.h"          /* Declares GraphOps, GraphType, createAdjListImpl(...) */
  #include "../DynamicArray/dynamic_array.h"  /* Your generic dynamic array interface */
  #include "../Queue/queue.h"
@@ -539,6 +540,7 @@ static void dfsHelper(const AdjacencyListImpl* impl,
     }
 }
 
+
 static void** adjListDFS(void* _impl, const void* startData, int* outCount) {
     AdjacencyListImpl* impl = (AdjacencyListImpl*)_impl;
     if (!impl || !startData) {
@@ -589,58 +591,144 @@ typedef struct {
 static int dijkstraNodeCompare(const void* a, const void* b) {
     const DijkstraNode* da = (const DijkstraNode*)a;
     const DijkstraNode* db = (const DijkstraNode*)b;
+
     if (da->distance < db->distance) return -1;
     else if (da->distance > db->distance) return 1;
+
     return 0;
 }
 
-static double* adjListDijkstra(void* _impl, const void* startData) {
-    AdjacencyListImpl* impl = (AdjacencyListImpl*)_impl;
-    if (!impl || !startData) return NULL;
+/*
+ * Helper function to reconstruct path from endIndex up to startIndex using parent[].
+ * We then push the path indices into 'path' in correct order (start -> ... -> end).
+ * 
+ * Because we store parent[v] = the index of the predecessor that set dist[v].
+ */
+static void reconstructPath(int startIndex, int endIndex, const int* parent, DynamicArray* pathOut) {
+    // We'll build it backward, then reverse it. Or we can do recursion.
+    // Let's do iterative stack approach for clarity.
 
-    // 1) find startIndex
+    // If dist[endIndex] is "infinity" or parent[endIndex] == -1 (and it's not the start),
+    // there's no path. We'll check that outside typically.
+    if (endIndex < 0) return;
+
+    // We collect indices in a temporary array
+    int capacity = 16;
+    int size = 0;
+    int* stack = (int*)malloc(sizeof(int)*capacity);
+
+    int current = endIndex;
+    while (current != -1) {
+        // push current
+        if (size >= capacity) {
+            capacity *= 2;
+            stack = (int*)realloc(stack, sizeof(int)*capacity);
+        }
+        stack[size++] = current;
+
+        if (current == startIndex) break;
+        current = parent[current];
+    }
+
+    // If we never hit startIndex, no path
+    if (current != startIndex) {
+        // no path found from start to end
+        free(stack);
+        return;
+    }
+
+    // Now stack[] holds the path in reverse: [endIndex, ..., startIndex]
+    // We push them into pathOut in correct forward order
+    for (int i = size-1; i >= 0; i--) {
+        // push back the index
+        daPushBack(pathOut, &stack[i], sizeof(int));
+    }
+
+    free(stack);
+}
+
+/*
+ * Dijkstra storing parent[] plus reconstructing path to 'endData' in 'path'.
+ * Also returns the full dist[] array if the caller wants distances to all vertices.
+ */
+static double* adjListDijkstra(
+    void* _impl,
+    const void* startData,
+    const void* endData,
+    DynamicArray* path
+) {
+    AdjacencyListImpl* impl = (AdjacencyListImpl*)_impl;
+    if (!impl || !startData || !path) return NULL;
+
+    // find startIndex
     int startIndex = -1;
+    int endIndex   = -1;
     size_t n = daSize(&impl->vertices);
+
     for (size_t i = 0; i < n; i++) {
         const VertexItem* v = (const VertexItem*)daGet(&impl->vertices, i);
         if (impl->compare(v->data, startData) == 0) {
             startIndex = (int)i;
-            break;
+        }
+        if (endData && impl->compare(v->data, endData) == 0) {
+            endIndex = (int)i;
         }
     }
-    if (startIndex < 0) return NULL;
-
-    // 2) dist array
-    double* dist = (double*)malloc(sizeof(double)*n);
-    if (!dist) return NULL;
-    for (size_t i = 0; i < n; i++) {
-        dist[i] = 1e15; // large number or DBL_MAX
-    }
-    dist[startIndex] = 0.0;
-
-    bool* visited = (bool*)calloc(n, sizeof(bool));
-    if (!visited) {
-        free(dist);
+    if (startIndex < 0) {
+        // start not found
         return NULL;
     }
 
-    PriorityQueue pq;
-    pqInit(&pq, dijkstraNodeCompare, true, 16); // min-heap
+    // If user didn't pass an 'endData', you can interpret endIndex = -1 => no path reconstruction
+    // or you can do path for all. We'll proceed if endIndex >=0.
 
+    // dist array
+    double* dist = (double*)malloc(sizeof(double)*n);
+    if (!dist) return NULL;
+    for (size_t i = 0; i < n; i++) {
+        dist[i] = DBL_MAX;
+    }
+    dist[startIndex] = 0.0;
+
+    // parent array
+    int* parent = (int*)malloc(sizeof(int)*n);
+    if (!parent) {
+        free(dist);
+        return NULL;
+    }
+    for (size_t i = 0; i < n; i++) {
+        parent[i] = -1;
+    }
+
+    // visited array
+    bool* visited = (bool*)calloc(n, sizeof(bool));
+    if (!visited) {
+        free(dist);
+        free(parent);
+        return NULL;
+    }
+
+    // init priority queue
+    PriorityQueue pq;
+    pqInit(&pq, dijkstraNodeCompare, true, 16);
+
+    // push start
     DijkstraNode startNode = { startIndex, 0.0 };
     pqPush(&pq, &startNode, sizeof(DijkstraNode));
 
     while (!pqIsEmpty(&pq)) {
         DijkstraNode current;
         size_t cSize = sizeof(DijkstraNode);
-        bool ok = pqPop(&pq, &current, &cSize);
-        if (!ok) break;
+        if (!pqPop(&pq, &current, &cSize)) break;
 
         int u = current.vertexIndex;
         if (visited[u]) continue;
         visited[u] = true;
 
-        // relax edges from u
+        // If we only care about path to 'endIndex', we could break early if (u == endIndex).
+        // We'll keep going to get full dist[].
+
+        // Relax edges from u
         const VertexItem* v = (const VertexItem*)daGet(&impl->vertices, (size_t)u);
         size_t ecount = daSize(&v->edges);
         for (size_t i = 0; i < ecount; i++) {
@@ -651,6 +739,7 @@ static double* adjListDijkstra(void* _impl, const void* startData) {
                 double alt = dist[u] + w;
                 if (alt < dist[nbr]) {
                     dist[nbr] = alt;
+                    parent[nbr] = u; // record how we got here
                     DijkstraNode nd = { nbr, alt };
                     pqPush(&pq, &nd, sizeof(DijkstraNode));
                 }
@@ -660,7 +749,19 @@ static double* adjListDijkstra(void* _impl, const void* startData) {
 
     pqFree(&pq);
     free(visited);
-    return dist;
+
+    // If endIndex >= 0, let's reconstruct path from startIndex -> endIndex
+    // 'path' is a DynamicArray the user gave us to fill with the path of indices
+    // We'll store them as int, e.g. 0, 3, 7, ...
+    if (endIndex >= 0 && dist[endIndex] < DBL_MAX) {
+        // Clear the 'path' dynamic array first, if desired:
+        // you might do daClear(...) if you have such a function.
+        // Now do the reconstruction
+        reconstructPath(startIndex, endIndex, parent, path);
+    }
+
+    free(parent);
+    return dist; 
 }
 
 

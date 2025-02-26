@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <float.h> // for DBL_MAX
+
 #include "graph.h"        /* or your main header that references createAdjMatrixImpl */
 #include "../Queue/queue.h"
 #include "../PriorityQueue/pq.h"
@@ -55,7 +57,7 @@ static void   adjMatrixPrint          (const void* impl, void (*printData)(const
 static void   adjMatrixDestroy        (void* impl);
 static void** adjMatrixBFS            (void* impl, const void* startData, int* outCount);
 static void** adjMatrixDFS            (void* impl, const void* startData, int* outCount);
-static double* adjMatrixDijkstra      (void* impl, const void* startData);
+static double* adjMatrixDijkstra      (void* impl, const void* startData, const void* endData, DynamicArray* path);
 
 /* The function-pointer table for adjacency matrix */
 static const GraphOps adjMatrixOps = {
@@ -654,21 +656,79 @@ static int matDijkstraCompare(const void* a, const void* b) {
     if (da->dist > db->dist) return 1;
     return 0;
 }
+/*
+ * Helper to reconstruct the path from endIndex => startIndex
+ * using parent[]. Then we reverse it and store in pathOut (a DynamicArray).
+ */
+static void reconstructPathMatrix(int startIndex, int endIndex,
+                                  const int* parent, DynamicArray* pathOut) 
+{
+    if (startIndex < 0 || endIndex < 0) return;
 
-static double* adjMatrixDijkstra(void* _impl, const void* startData) {
+    // We'll store the path in a small temp array in reverse
+    int capacity = 16;
+    int size = 0;
+    int* revStack = (int*)malloc(capacity * sizeof(int));
+
+    int curr = endIndex;
+    while (curr != -1) {
+        // push curr
+        if (size >= capacity) {
+            capacity *= 2;
+            revStack = (int*)realloc(revStack, capacity * sizeof(int));
+        }
+        revStack[size++] = curr;
+
+        if (curr == startIndex) break;
+        curr = parent[curr];
+    }
+
+    // If we never reached startIndex => no path
+    if (curr != startIndex) {
+        free(revStack);
+        return;
+    }
+
+    // Now revStack = [end, ..., start] in reverse order
+    // We'll push them into pathOut in forward order
+    for (int i = size - 1; i >= 0; i--) {
+        daPushBack(pathOut, &revStack[i], sizeof(int));
+    }
+
+    free(revStack);
+}
+
+/*
+ * Adjacency-Matrix Dijkstra that also reconstructs a path from 'startData' to 'endData'
+ * and stores that path in 'pathOut'. Returns dist[] array with distances for all vertices.
+ */
+static double* adjMatrixDijkstra(void* _impl,
+                                 const void* startData,
+                                 const void* endData,
+                                 DynamicArray* pathOut)
+{
     AdjacencyMatrixImpl* impl = (AdjacencyMatrixImpl*)_impl;
-    if (!impl || !startData) return NULL;
+    if (!impl || !startData || !pathOut) {
+        return NULL;
+    }
 
-    // find startIndex
+    // find startIndex, endIndex
     int startIndex = -1;
+    int endIndex   = -1;
     for (int i = 0; i < impl->size; i++) {
         if (impl->compare(impl->vertexData[i], startData) == 0) {
             startIndex = i;
-            break;
+        }
+        if (endData && impl->compare(impl->vertexData[i], endData) == 0) {
+            endIndex = i;
         }
     }
-    if (startIndex < 0) return NULL;
+    if (startIndex < 0) {
+        // start not found
+        return NULL;
+    }
 
+    // dist array
     double* dist = (double*)malloc(sizeof(double)*impl->size);
     if (!dist) return NULL;
     for (int i = 0; i < impl->size; i++) {
@@ -676,12 +736,25 @@ static double* adjMatrixDijkstra(void* _impl, const void* startData) {
     }
     dist[startIndex] = 0.0;
 
-    bool* visited = (bool*)calloc((size_t)impl->size, sizeof(bool));
-    if (!visited) {
+    // parent array
+    int* parent = (int*)malloc(sizeof(int)*impl->size);
+    if (!parent) {
         free(dist);
         return NULL;
     }
+    for (int i=0; i<impl->size; i++){
+        parent[i] = -1;
+    }
 
+    // visited
+    bool* visited = (bool*)calloc((size_t)impl->size, sizeof(bool));
+    if (!visited) {
+        free(dist);
+        free(parent);
+        return NULL;
+    }
+
+    // Priority Queue
     PriorityQueue pq;
     pqInit(&pq, matDijkstraCompare, true, 16);
 
@@ -691,19 +764,24 @@ static double* adjMatrixDijkstra(void* _impl, const void* startData) {
     while (!pqIsEmpty(&pq)) {
         MatDijkstraNode curr;
         size_t cSize = sizeof(MatDijkstraNode);
-        if (!pqPop(&pq, &curr, &cSize)) break;
+        bool popped = pqPop(&pq, &curr, &cSize);
+        if (!popped) break;
 
         int u = curr.vertex;
         if (visited[u]) continue;
         visited[u] = true;
 
-        // relax edges from u by scanning row u
+        // If we only want to find the path for 'endIndex', we can break early if (u == endIndex).
+        // We'll do a full run though, to fill dist[] anyway.
+
+        // relax edges by scanning row u
         for (int v = 0; v < impl->size; v++) {
             double w = impl->matrix[u][v];
-            if (w >= 0.0 && !visited[v]) {  // there's an edge u->v
+            if (w >= 0.0 && !visited[v]) { // there's an edge
                 double alt = dist[u] + w;
                 if (alt < dist[v]) {
                     dist[v] = alt;
+                    parent[v] = u;   // record how we got here
                     MatDijkstraNode nd = { v, alt };
                     pqPush(&pq, &nd, sizeof(MatDijkstraNode));
                 }
@@ -713,5 +791,13 @@ static double* adjMatrixDijkstra(void* _impl, const void* startData) {
 
     pqFree(&pq);
     free(visited);
+
+    // Reconstruct path if endIndex >= 0 and dist[endIndex] != DBL_MAX
+    if (endIndex >= 0 && dist[endIndex] < DBL_MAX) {
+        // Clear pathOut if needed, or just fill it. We'll do an internal "reconstructPathMatrix".
+        reconstructPathMatrix(startIndex, endIndex, parent, pathOut);
+    }
+
+    free(parent);
     return dist;
 }
