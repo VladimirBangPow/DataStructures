@@ -1,0 +1,28 @@
+{
+    "files.associations": {
+        "test_segtree.h": "c",
+        "double_linkedlist.h": "c",
+        "dynamic_array.h": "c",
+        "queue.h": "c",
+        "float.h": "c",
+        "bst.h": "c",
+        "stdio.h": "c",
+        "assert.h": "c",
+        "binary_tree.h": "c",
+        "test_binary_tree.h": "c",
+        "test_bp_tree.h": "c",
+        "cstring.h": "c",
+        "test_graph.h": "c",
+        "linkedlist.h": "c",
+        "segtree.h": "c",
+        "skip_list.h": "c",
+        "test_skip_list.h": "c",
+        "stdlib.h": "c",
+        "test_treap.h": "c",
+        "string.h": "c",
+        "time.h": "c",
+        "test_hash_table.h": "c",
+        "test_linkedlist.h": "c",
+        "trie.h": "c"
+    }
+}
